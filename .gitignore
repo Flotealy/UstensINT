@@ -24,3 +24,7 @@ uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local Deployment Guide (not committed)
+DEPLOYMENT_GUIDE.md
+
