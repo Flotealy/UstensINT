@@ -12,7 +12,7 @@ import {
   Mail,
   MailCheck,
   MessageSquare,
-  PackageAlert,
+  Package,
   Phone,
   Plus,
   RotateCcw,
@@ -773,7 +773,7 @@ export default function SettingsPage() {
                 >
                   <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <div className="inline" style={{ gap: 8 }}>
-                      <PackageAlert size={17} style={{ color: "#8b5cf6" }} />
+                      <Package size={17} style={{ color: "#8b5cf6" }} />
                       <strong style={{ fontSize: 15 }}>{t("settings.email_stock_alert_title")}</strong>
                     </div>
                     <input
