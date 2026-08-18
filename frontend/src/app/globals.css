@@ -1879,27 +1879,31 @@ button.row:hover,
 }
 
 /* --------------------------------------------------------------------------
-   13. Page de Connexion (enseigne centrée + carte)
+   13. Page de Connexion (enseigne compacte, zéro scroll)
    -------------------------------------------------------------------------- */
 
 .login {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   background: var(--bg);
-  overflow-x: hidden;
+  padding: 12px 16px;
+  box-sizing: border-box;
 }
 
-/* Halo décoratif derrière l'enseigne */
+/* Halo décoratif discret */
 .login::before {
   content: "";
   position: absolute;
-  inset: -30% -10% auto -10%;
-  height: 90%;
+  inset: -20% -10% auto -10%;
+  height: 70%;
   background: radial-gradient(
-    ellipse at 50% 60%,
-    rgba(72, 188, 188, 0.22) 0%,
+    ellipse at 50% 50%,
+    rgba(72, 188, 188, 0.16) 0%,
     rgba(238, 243, 244, 0) 65%
   );
   pointer-events: none;
@@ -1907,8 +1911,8 @@ button.row:hover,
 
 .login__lang {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 14px;
+  right: 16px;
   z-index: 2;
 }
 
@@ -1920,8 +1924,11 @@ button.row:hover,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 30px;
-  padding: 76px 20px 48px;
+  gap: 14px;
+  min-height: 0;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .login__hero {
@@ -1929,57 +1936,52 @@ button.row:hover,
   flex-direction: column;
   align-items: center;
   text-align: center;
+  gap: 4px;
 }
 
 .login__logo {
-  width: clamp(180px, 46vw, 280px);
-  height: auto;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  filter: drop-shadow(0 10px 22px rgba(1, 45, 56, 0.16));
+  border-radius: 10px;
+  filter: drop-shadow(0 3px 8px rgba(1, 45, 56, 0.16));
 }
 
 .login__title {
   font-family: var(--font-display);
-  font-size: clamp(3rem, 13vw, 5.6rem);
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.015em;
+  font-size: 1.85rem;
+  font-weight: 600;
+  line-height: 1.1;
   color: var(--primary-deep);
-  margin-top: 14px;
-}
-
-.login__rule {
-  width: 88px;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    rgba(72, 188, 188, 0) 0%,
-    var(--accent) 50%,
-    rgba(72, 188, 188, 0) 100%
-  );
-  margin: 18px 0 14px;
+  margin: 0;
 }
 
 .login__baseline {
   color: var(--ink-soft);
-  font-size: 12.5px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  max-width: 34ch;
-  line-height: 1.6;
+  margin: 0;
 }
 
 .login__card {
   width: 100%;
-  max-width: 440px;
+  padding: 20px 22px;
 }
 
 .login__footer {
   position: relative;
   z-index: 1;
   background: transparent;
-  border-top-color: var(--line);
+  border-top: 1px solid var(--line-soft);
+  padding: 8px 12px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
   justify-content: center;
   text-align: center;
 }

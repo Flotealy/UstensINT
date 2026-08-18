@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, KeyRound, Mail, RefreshCw, ArrowLeft } from "lucide-react";
+import { AlertCircle, ArrowLeft, KeyRound, Mail, RefreshCw } from "lucide-react";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { useTranslation } from "../components/I18nProvider";
 import { ApiError, api, getToken, setToken } from "../lib/api";
@@ -30,7 +30,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [successInfo, setSuccessInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
@@ -52,7 +51,6 @@ export default function LoginPage() {
   const handleSendCode = async (event?: React.FormEvent) => {
     if (event) event.preventDefault();
     setError("");
-    setSuccessInfo("");
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) return;
@@ -73,7 +71,6 @@ export default function LoginPage() {
 
       setStep("code");
       setCooldown(res.cooldown_seconds || 60);
-      setSuccessInfo(res.message || t("login.code_sent_to"));
       setCode("");
     } catch (caught) {
       setError(
@@ -92,7 +89,6 @@ export default function LoginPage() {
   const handleVerifyCode = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    setSuccessInfo("");
 
     const cleanCode = code.trim().toUpperCase();
     if (cleanCode.length !== 6) {
@@ -103,7 +99,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const session = await api<AuthResponse>("/auth/verify-code", {
+      const res = await api<AuthResponse>("/auth/verify-code", {
         method: "POST",
         json: {
           email: email.trim().toLowerCase(),
@@ -112,8 +108,9 @@ export default function LoginPage() {
         anonymous: true,
       });
 
-      setToken(session.access_token);
+      setToken(res.access_token);
       router.replace("/");
+      router.refresh();
     } catch (caught) {
       setError(
         caught instanceof ApiError && caught.status === 0
@@ -122,6 +119,7 @@ export default function LoginPage() {
             ? caught.message
             : t("app.error_generic"),
       );
+    } finally {
       setLoading(false);
     }
   };
@@ -138,12 +136,10 @@ export default function LoginPage() {
             className="login__logo"
             src="/logo.png"
             alt="Cook'It"
-            width={200}
-            height={200}
-            style={{ borderRadius: 20, objectFit: "contain", display: "block" }}
+            width={44}
+            height={44}
           />
           <h1 className="login__title">Ustens&rsquo;INT</h1>
-          <div className="login__rule" />
           <p className="login__baseline">{t("login.tagline")}</p>
         </header>
 
@@ -151,7 +147,7 @@ export default function LoginPage() {
           {step === "email" ? (
             /* --- ÉTAPE 1 : Saisie Email --- */
             <>
-              <h2 style={{ marginBottom: 20 }}>{t("login.heading")}</h2>
+              <h2 style={{ marginBottom: 14, fontSize: "1.25rem" }}>{t("login.heading")}</h2>
 
               <form className="form" onSubmit={handleSendCode}>
                 <label className="field">
@@ -170,8 +166,8 @@ export default function LoginPage() {
                 </label>
 
                 {error && (
-                  <p className="alert alert--error">
-                    <AlertCircle size={18} />
+                  <p className="alert alert--error" style={{ margin: "4px 0" }}>
+                    <AlertCircle size={16} />
                     <span>{error}</span>
                   </p>
                 )}
@@ -180,58 +176,40 @@ export default function LoginPage() {
                   type="submit"
                   className="btn btn--primary btn--block"
                   disabled={loading || !email.trim()}
+                  style={{ marginTop: 6 }}
                 >
-                  <Mail size={18} />
+                  <Mail size={17} />
                   <span>{loading ? t("login.submitting") : t("login.submit")}</span>
                 </button>
               </form>
 
-              <p className="field__hint" style={{ marginTop: 16 }}>
+              <p className="field__hint" style={{ marginTop: 12, textAlign: "center", fontSize: 12 }}>
                 {t("login.email_hint")}
               </p>
             </>
           ) : (
-            /* --- ÉTAPE 2 : Saisie Code OTP (6 caractères alphanumériques) --- */
+            /* --- ÉTAPE 2 : Saisie Code OTP (6 caractères) --- */
             <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <h2 style={{ margin: 0 }}>{t("login.code_heading")}</h2>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <h2 style={{ margin: 0, fontSize: "1.25rem" }}>{t("login.code_heading")}</h2>
                 <button
                   type="button"
-                  className="btn btn--subtle"
-                  style={{ padding: "6px 10px", fontSize: 13 }}
+                  className="btn btn--ghost btn--sm"
+                  style={{ padding: "3px 8px", fontSize: 12 }}
                   onClick={() => {
                     setStep("email");
                     setError("");
-                    setSuccessInfo("");
                   }}
                 >
-                  <ArrowLeft size={15} />
+                  <ArrowLeft size={13} />
                   <span>{t("login.change_email")}</span>
                 </button>
               </div>
 
-              <div
-                style={{
-                  background: "var(--surface-sunken, rgba(0,0,0,0.04))",
-                  border: "1px solid var(--border-soft)",
-                  borderRadius: 10,
-                  padding: "10px 14px",
-                  fontSize: 13.5,
-                  color: "var(--text-muted)",
-                  marginBottom: 18,
-                  wordBreak: "break-all",
-                }}
-              >
-                <span>{t("login.code_sent_to")} </span>
-                <strong style={{ color: "var(--text-strong, #fff)" }}>{email}</strong>
-              </div>
-
-              {successInfo && (
-                <p className="alert alert--success" style={{ marginBottom: 16 }}>
-                  <CheckCircle2 size={18} />
-                  <span>{successInfo}</span>
-                </p>
-              )}
+              <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "0 0 14px 0", lineHeight: 1.35 }}>
+                {t("login.code_sent_to")}{" "}
+                <strong style={{ color: "var(--ink-strong)", wordBreak: "break-all" }}>{email}</strong>
+              </p>
 
               <form className="form" onSubmit={handleVerifyCode}>
                 <label className="field">
@@ -244,17 +222,17 @@ export default function LoginPage() {
                     maxLength={6}
                     autoComplete="one-time-code"
                     value={code}
-                    placeholder={t("login.code_placeholder")}
+                    placeholder="EX: K7M2X9"
                     style={{
                       fontFamily: "monospace",
-                      fontSize: "1.45rem",
+                      fontSize: "1.35rem",
                       fontWeight: 700,
-                      letterSpacing: "6px",
+                      letterSpacing: "5px",
                       textAlign: "center",
                       textTransform: "uppercase",
+                      height: 44,
                     }}
                     onChange={(event) => {
-                      // Nettoyer en majuscules sans espaces
                       const val = event.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
                       setCode(val);
                     }}
@@ -262,8 +240,8 @@ export default function LoginPage() {
                 </label>
 
                 {error && (
-                  <p className="alert alert--error">
-                    <AlertCircle size={18} />
+                  <p className="alert alert--error" style={{ margin: "4px 0" }}>
+                    <AlertCircle size={16} />
                     <span>{error}</span>
                   </p>
                 )}
@@ -272,21 +250,22 @@ export default function LoginPage() {
                   type="submit"
                   className="btn btn--primary btn--block"
                   disabled={loading || code.trim().length !== 6}
+                  style={{ marginTop: 6 }}
                 >
-                  <KeyRound size={18} />
+                  <KeyRound size={17} />
                   <span>{loading ? t("login.verifying") : t("login.verify_submit")}</span>
                 </button>
               </form>
 
-              <div style={{ marginTop: 20, textAlign: "center" }}>
+              <div style={{ marginTop: 12, textAlign: "center" }}>
                 <button
                   type="button"
-                  className="btn btn--subtle"
-                  style={{ fontSize: 13.5 }}
+                  className="btn btn--ghost btn--sm"
+                  style={{ fontSize: 12.5, padding: "4px 8px" }}
                   disabled={loading || cooldown > 0}
                   onClick={() => handleSendCode()}
                 >
-                  <RefreshCw size={15} className={loading ? "spin" : ""} />
+                  <RefreshCw size={13} className={loading ? "spin" : ""} />
                   <span>
                     {cooldown > 0
                       ? t("login.resend_wait", { seconds: cooldown })
@@ -295,7 +274,7 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <p className="field__hint" style={{ marginTop: 14, textAlign: "center" }}>
+              <p className="field__hint" style={{ marginTop: 8, textAlign: "center", fontSize: 11.5 }}>
                 {t("login.code_hint")}
               </p>
             </>
@@ -303,7 +282,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <footer className="footer login__footer">
+      <footer className="login__footer">
         <span>{t("footer.rights", { year: new Date().getFullYear() })}</span>
         <span className="footer__links">
           <Link href="/mentions-legales">{t("footer.legal")}</Link>

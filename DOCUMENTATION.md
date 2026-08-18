@@ -154,7 +154,15 @@
 | `equipment_statuses` | `["Neuf", "Bon état", "Usé", "En réparation", "Hors service"]` | Liste des états du matériel |
 | `blocking_equipment_statuses` | `["En réparation", "Hors service"]` | États empêchant la réservation |
 | `allowed_domains` | `["telecom-sudparis.eu"]` | Domaines autorisés à l'inscription |
-| `discord_webhook_url` | `""` | Webhook Discord pour les alertes |
+| `notifications_enabled` | `"true"` | Interrupteur général des notifications (email et Discord) |
+| `discord_webhooks` | `[]` | Salons Discord notifiés — tableau JSON de `{name, url}` |
+| `notify_<événement>_email` | `"true"` | Diffusion par email de l'événement |
+| `notify_<événement>_discord` | `"false"` | Diffusion sur Discord de l'événement |
+| `email_reminder_hours_before` | `"24"` | Délai du rappel avant l'échéance du prêt |
+
+Événements notifiables : `new_reservation`, `approval`, `reminder`, `overdue`,
+`stock_alert`. Les rappels et les alertes de retard sont déclenchés par une
+tâche de fond qui balaye les réservations toutes les 30 minutes.
 
 ---
 
