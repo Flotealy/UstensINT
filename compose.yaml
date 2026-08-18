@@ -35,6 +35,7 @@ services:
       - .env
     volumes:
       - uploads:/app/uploads
+      - ./backend/app:/app/app
     depends_on:
       db:
         condition: service_healthy
