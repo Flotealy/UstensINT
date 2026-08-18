@@ -110,18 +110,5 @@ async def seed_database(session: AsyncSession) -> None:
     if categories_added:
         logger.info("Seed: %d catégories ajoutées", categories_added)
 
-    # --- Admin user ---
-    admin_exists = await session.execute(
-        select(User).where(User.role == "admin").limit(1)
-    )
-    if not admin_exists.scalar_one_or_none():
-        admin_user = User(
-            email="admin@telecom-sudparis.eu",
-            display_name="Admin",
-            role="admin",
-        )
-        session.add(admin_user)
-        logger.info("Seed: utilisateur admin créé (admin@telecom-sudparis.eu)")
-
     await session.commit()
     logger.info("Seed: terminé")

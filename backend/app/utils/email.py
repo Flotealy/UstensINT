@@ -129,15 +129,15 @@ async def send_email(
 
 
 async def send_otp_email(to_addr: str, code: str, expires_in_minutes: int = 10) -> None:
-    """Send a stylized Cook'It 6-character OTP verification email."""
-    subject = f"🍳 Votre code de connexion Cook'It : {code}"
+    """Send a clean light-mode Cook'It 6-character OTP verification email."""
+    subject = f"Cook'It — Votre code de connexion : {code}"
     
     text_content = (
         f"Bonjour,\n\n"
         f"Votre code d'authentification pour Cook'It est : {code}\n\n"
-        f"Ce code est valable pendant {expires_in_minutes} minutes et ne peut être utilisé qu'une seule fois.\n"
-        f"Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.\n\n"
-        f"— L'équipe Cook'It Télécom SudParis"
+        f"Ce code est valable pendant {expires_in_minutes} minutes et ne peut etre utilise qu'une seule fois.\n"
+        f"Si vous n'etes pas a l'origine de cette demande, vous pouvez ignorer cet email.\n\n"
+        f"— L'equipe Cook'It Telecom SudParis"
     )
 
     html_content = f"""<!DOCTYPE html>
@@ -147,45 +147,44 @@ async def send_otp_email(to_addr: str, code: str, expires_in_minutes: int = 10) 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Code de connexion Cook'It</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0b1f24; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0b1f24; padding: 40px 16px;">
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #f1f5f9; padding: 36px 12px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" style="max-width: 520px; background: #102a31; border: 1px solid rgba(72, 188, 188, 0.2); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.35);">
+        <table role="presentation" width="100%" style="max-width: 500px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
           <!-- Header -->
           <tr>
-            <td style="padding: 32px 32px 20px 32px; text-align: center; background: linear-gradient(180deg, rgba(72, 188, 188, 0.12) 0%, rgba(16, 42, 49, 0) 100%);">
-              <div style="font-size: 32px; line-height: 1; margin-bottom: 8px;">🍳</div>
-              <h1 style="margin: 0; color: #48bcbc; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Cook'It</h1>
-              <p style="margin: 4px 0 0 0; color: #8fa8ad; font-size: 13px;">Télécom SudParis</p>
+            <td style="padding: 28px 24px 20px 24px; text-align: center; border-bottom: 2px solid #0d9488;">
+              <h1 style="margin: 0; color: #0f766e; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">Cook'It</h1>
+              <p style="margin: 3px 0 0 0; color: #64748b; font-size: 13px; font-weight: 500;">Telecom SudParis — Reservation de materiel</p>
             </td>
           </tr>
           <!-- Body -->
           <tr>
-            <td style="padding: 10px 32px 32px 32px; text-align: center;">
-              <h2 style="margin: 0 0 12px 0; color: #ffffff; font-size: 19px; font-weight: 600;">Votre code de connexion</h2>
-              <p style="margin: 0 0 24px 0; color: #b4c9ce; font-size: 14.5px; line-height: 1.5;">
-                Voici votre code de sécurité pour vous connecter à la plateforme de réservation :
+            <td style="padding: 28px 28px 24px 28px; text-align: center;">
+              <h2 style="margin: 0 0 10px 0; color: #0f172a; font-size: 18px; font-weight: 600;">Code de connexion</h2>
+              <p style="margin: 0 0 22px 0; color: #475569; font-size: 14.5px; line-height: 1.5;">
+                Voici votre code de securite a usage unique pour vous connecter :
               </p>
               
               <!-- OTP Box -->
-              <div style="background: #06161a; border: 2px dashed #48bcbc; border-radius: 12px; padding: 18px 24px; margin: 0 auto 24px auto; display: inline-block;">
-                <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #ffb03a; display: block;">{code}</span>
+              <div style="background-color: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 16px 20px; margin: 0 auto 20px auto; display: inline-block;">
+                <span style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #0f172a; display: block;">{code}</span>
               </div>
 
-              <p style="margin: 0 0 8px 0; color: #8fa8ad; font-size: 13.5px;">
-                ⏱ Ce code expire dans <strong>{expires_in_minutes} minutes</strong> et n'est valable qu'une seule fois.
+              <p style="margin: 0 0 10px 0; color: #475569; font-size: 13.5px;">
+                Ce code expire dans <strong>{expires_in_minutes} minutes</strong> et n'est valable qu'une seule fois.
               </p>
-              <p style="margin: 0; color: #6b868c; font-size: 12px; line-height: 1.4;">
-                Si vous n'avez pas demandé ce code, ignorez simplement cet email. La sécurité de votre compte n'est pas compromise.
+              <p style="margin: 0; color: #94a3b8; font-size: 12px; line-height: 1.4;">
+                Si vous n'avez pas demande ce code, ignorez simplement cet email.
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td style="padding: 16px 32px; background: #0b1e23; border-top: 1px solid rgba(72, 188, 188, 0.1); text-align: center;">
-              <p style="margin: 0; color: #5a757b; font-size: 11.5px;">
-                UstensINT — Club Cook'It &copy; 2026 Télécom SudParis
+            <td style="padding: 14px 24px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center;">
+              <p style="margin: 0; color: #94a3b8; font-size: 11.5px;">
+                UstensINT — Club Cook'It &copy; 2026 Telecom SudParis
               </p>
             </td>
           </tr>

@@ -274,7 +274,7 @@ echo -e "${C_GREEN}${C_BOLD}====================================================
 echo -e "\n${C_BOLD}🌐 Accès à l'application :${C_RESET}"
 echo -e "  - URL Web : ${C_CYAN}${PUBLIC_APP_URL}${C_RESET}"
 echo -e "  - API Backend : ${C_CYAN}${PUBLIC_APP_URL}/api/docs${C_RESET}"
-echo -e "  - Compte Admin initial : ${C_YELLOW}admin@telecom-sudparis.eu${C_RESET}"
+echo -e "  - Définir un administrateur : ${C_YELLOW}./set-admin.sh votre-email@domaine.fr${C_RESET}"
 
 if [ "$ENABLE_SMTP" = true ]; then
     echo -e "\n${C_BOLD}📧 Configuration DNS Cloudflare pour le Serveur Mail :${C_RESET}"
