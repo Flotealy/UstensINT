@@ -1,5 +1,6 @@
-# Environment variables
+# Environment variables & secrets
 .env
+mdp.txt
 
 # Python
 __pycache__/

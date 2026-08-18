@@ -11,6 +11,7 @@ from app.models.reservation import Reservation, ReservationItem
 from app.models.setting import Setting
 from app.models.audit_log import AuditLog
 from app.models.stock import ClubStock
+from app.models.auth_code import AuthCode
 
 __all__ = [
     "User",
@@ -21,4 +22,5 @@ __all__ = [
     "Setting",
     "AuditLog",
     "ClubStock",
+    "AuthCode",
 ]
