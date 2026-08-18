@@ -297,8 +297,7 @@ textarea {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 /* Sur mobile, .nav--rail DOIT être masqué car c'est le tiroir qui s'affiche */
@@ -315,16 +314,24 @@ textarea {
     width: var(--sidebar-w);
     flex-shrink: 0;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
   }
+}
+
+.drawer .nav {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .nav__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 24px 20px 20px;
+  gap: 10px;
+  padding: 16px 16px 12px;
   color: #fff;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .nav__brand:hover {
@@ -332,8 +339,8 @@ textarea {
 }
 
 .nav__brand-mark {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
   background: var(--accent);
   color: var(--primary-deep);
@@ -350,49 +357,57 @@ textarea {
 
 .nav__brand-name {
   font-family: var(--font-serif);
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.1;
   display: block;
 }
 
 .nav__brand-sub {
-  font-size: 11px;
+  font-size: 10.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent);
   font-weight: 500;
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .nav__groups {
   flex: 1;
-  padding: 8px 12px 20px;
+  min-height: 0;
+  padding: 4px 10px 10px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 12px;
+  justify-content: flex-start;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.nav__groups::-webkit-scrollbar {
+  display: none;
 }
 
 .nav__group-title {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.45);
-  padding: 0 12px 6px;
+  padding: 0 10px 4px;
 }
 
 .nav__link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--radius-md);
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
   color: rgba(255, 255, 255, 0.78);
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 400;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -411,30 +426,31 @@ textarea {
 .nav__link[aria-current="page"]::before {
   content: "";
   position: absolute;
-  left: -12px;
+  left: -10px;
   top: 50%;
   transform: translateY(-50%);
   width: 4px;
-  height: 24px;
+  height: 20px;
   border-radius: 0 4px 4px 0;
   background: var(--accent);
 }
 
 .nav__foot {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
 .nav__user {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
   color: #fff;
   text-decoration: none;
   transition: background-color 0.15s ease;
@@ -1176,19 +1192,125 @@ textarea {
   transform: translateX(18px);
 }
 
+/* Bascule « canal » (Email / Discord) — case à cocher lisible d'un coup d'œil */
+.toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.toggle-pill:not(:disabled):hover {
+  border-color: var(--primary);
+  color: var(--primary-deep);
+}
+
+.toggle-pill[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--primary-deep);
+  box-shadow: 0 2px 8px rgba(72, 188, 188, 0.3);
+}
+
+.toggle-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Paramétrage des notifications (événements & webhooks) */
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: opacity 0.15s ease;
+}
+
+.notif-row,
+.webhook-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+}
+
+.notif-row {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.notif-row__text {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.notif-row__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.notif-row__when {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+}
+
+.notif-row__channels {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.webhook-row {
+  align-items: center;
+}
+
+.webhook-row__name {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.webhook-row__url {
+  flex: 3 1 260px;
+  min-width: 0;
+}
+
+.webhook-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 /* --------------------------------------------------------------------------
    9. Catalogue & Cartes d'équipement
    -------------------------------------------------------------------------- */
 
 .eq-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 @media (min-width: 640px) {
   .eq-grid {
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 18px;
   }
 }

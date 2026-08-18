@@ -85,6 +85,7 @@ async def list_stock(
 async def create_stock_item(
     body: StockItemCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_moderator),
 ):
@@ -105,6 +106,9 @@ async def create_stock_item(
     )
     await db.commit()
 
+    if item.status in STOCK_ALERT_STATUSES:
+        await _queue_stock_alert(db, background_tasks, item)
+
     return item
 
 
@@ -113,6 +117,7 @@ async def update_stock_item(
     item_id: uuid.UUID,
     body: StockItemUpdate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_moderator),
 ):
@@ -124,6 +129,7 @@ async def update_stock_item(
             status_code=status.HTTP_404_NOT_FOUND, detail="Élément de stock introuvable."
         )
 
+    previous_status = item.status
     patch_data = body.model_dump(exclude_unset=True)
     for field, val in patch_data.items():
         setattr(item, field, val)
@@ -141,6 +147,10 @@ async def update_stock_item(
         request=request,
     )
     await db.commit()
+
+    # Alerte uniquement au passage vers un statut critique (pas à chaque édition).
+    if item.status != previous_status and item.status in STOCK_ALERT_STATUSES:
+        await _queue_stock_alert(db, background_tasks, item)
 
     return item
 

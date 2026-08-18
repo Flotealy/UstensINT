@@ -3,7 +3,8 @@ UstensINT — Backend FastAPI
 Point d'entrée de l'application.
 """
 
-from contextlib import asynccontextmanager
+import asyncio
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +14,7 @@ from app.config import settings
 from app.database import engine, async_session, Base
 from app.models import *  # noqa: F401, F403 — registers all models with Base.metadata
 from app.seed import seed_database
+from app.services.scheduler import run_scheduler
 from app.routers import auth as auth_router
 from app.routers import categories as categories_router
 from app.routers import equipment as equipment_router
@@ -24,10 +26,28 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         # Ensure new schema columns exist if table was created previously
         await conn.execute(text("ALTER TABLE reservations ADD COLUMN IF NOT EXISTS staff_comment TEXT;"))
+        await conn.execute(
+            text(
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;"
+            )
+        )
+        await conn.execute(
+            text(
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS overdue_notified_at TIMESTAMPTZ;"
+            )
+        )
     async with async_session() as session:
         await seed_database(session)
-    yield
-    await engine.dispose()
+
+    # Rappels de restitution et alertes de retard.
+    scheduler_task = asyncio.create_task(run_scheduler())
+    try:
+        yield
+    finally:
+        scheduler_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await scheduler_task
+        await engine.dispose()
 
 
 app = FastAPI(

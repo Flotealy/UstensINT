@@ -8,7 +8,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock,
-  KeyRound,
+  Hash,
   Mail,
   MailCheck,
   MessageSquare,
@@ -18,14 +18,12 @@ import {
   RotateCcw,
   Save,
   Send,
-  Shield,
   ShieldAlert,
-  Sparkles,
   Sliders,
+  Trash2,
   Users,
   Utensils,
   X,
-  Zap,
 } from "lucide-react";
 import { useTranslation } from "../../../components/I18nProvider";
 import { ApiError, api } from "../../../lib/api";
@@ -38,23 +36,21 @@ const LIST_KEYS = [
   "allowed_domains",
 ] as const;
 
-const NUMBER_KEYS = [
-  "max_reservation_days",
-  "max_advance_days",
-  "email_reminder_hours_before",
+const MAX_KEYS = ["max_reservation_days", "max_advance_days"] as const;
+
+/** Événements notifiables : chacun est diffusable par email et/ou Discord. */
+const NOTIFICATION_EVENTS = [
+  { key: "new_reservation", icon: MailCheck, color: "var(--primary)" },
+  { key: "approval", icon: CheckCircle2, color: "var(--accent-deep)" },
+  { key: "reminder", icon: Clock, color: "#d97706" },
+  { key: "overdue", icon: AlertCircle, color: "var(--danger)" },
+  { key: "stock_alert", icon: Package, color: "#7c3aed" },
 ] as const;
 
-const BOOLEAN_KEYS = [
-  "auto_approve_reservations",
-  "require_phone",
-  "require_comments",
-  "email_notifications_enabled",
-  "email_notify_new_reservation",
-  "email_notify_approval",
-  "email_notify_reminder",
-  "email_notify_overdue",
-  "email_notify_stock_alert",
-] as const;
+type NotificationChannel = "email" | "discord";
+
+const channelKey = (event: string, channel: NotificationChannel) =>
+  `notify_${event}_${channel}`;
 
 const DEFAULTS: Record<string, string> = {
   max_reservation_days: "14",
@@ -66,26 +62,40 @@ const DEFAULTS: Record<string, string> = {
   equipment_statuses: '["Neuf","Bon état","Usé","En réparation","Hors service"]',
   blocking_equipment_statuses: '["En réparation","Hors service"]',
   allowed_domains: '["telecom-sudparis.eu"]',
-  discord_webhook_url: "",
-  email_notifications_enabled: "true",
-  email_notify_new_reservation: "true",
-  email_notify_approval: "true",
-  email_notify_reminder: "true",
+  notifications_enabled: "true",
   email_reminder_hours_before: "24",
-  email_notify_overdue: "true",
-  email_notify_stock_alert: "true",
-  email_staff_notification_address: "",
+  discord_webhooks: "[]",
+  ...Object.fromEntries(
+    NOTIFICATION_EVENTS.flatMap((event) => [
+      [channelKey(event.key, "email"), "true"],
+      [channelKey(event.key, "discord"), "false"],
+    ]),
+  ),
 };
 
 type SettingsTab = "rules" | "equipment" | "access" | "notifications";
 
-interface SmtpStatus {
-  configured: boolean;
-  smtp_host: string;
-  smtp_port: number;
-  smtp_from: string;
-  smtp_user: string;
-  smtp_tls: boolean;
+interface DiscordWebhook {
+  name: string;
+  url: string;
+}
+
+function parseWebhooks(raw: string | undefined): DiscordWebhook[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((entry) =>
+      typeof entry === "string"
+        ? { name: "Discord", url: entry }
+        : {
+            name: String((entry as DiscordWebhook)?.name ?? ""),
+            url: String((entry as DiscordWebhook)?.url ?? ""),
+          },
+    );
+  } catch {
+    return [];
+  }
 }
 
 function parseList(raw: string): string[] {
@@ -192,9 +202,8 @@ export default function SettingsPage() {
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const [smtpStatus, setSmtpStatus] = useState<SmtpStatus | null>(null);
-  const [testEmailLoading, setTestEmailLoading] = useState(false);
-  const [testEmailFeedback, setTestEmailFeedback] = useState<{
+  const [testingWebhook, setTestingWebhook] = useState<number | null>(null);
+  const [webhookFeedback, setWebhookFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
@@ -206,6 +215,26 @@ export default function SettingsPage() {
         for (const item of items) {
           mapped[item.key] = item.value;
         }
+
+        // Reprise des anciens paramètres : interrupteur global, bascules email
+        // par événement et webhook unique historique.
+        const legacyMaster = mapped.email_notifications_enabled;
+        if (legacyMaster && !items.some((item) => item.key === "notifications_enabled")) {
+          mapped.notifications_enabled = legacyMaster;
+        }
+        for (const event of NOTIFICATION_EVENTS) {
+          const key = channelKey(event.key, "email");
+          const legacy = mapped[`email_notify_${event.key}`];
+          if (legacy && !items.some((item) => item.key === key)) {
+            mapped[key] = legacy;
+          }
+        }
+        if (parseWebhooks(mapped.discord_webhooks).length === 0 && mapped.discord_webhook_url) {
+          mapped.discord_webhooks = JSON.stringify([
+            { name: "Discord", url: mapped.discord_webhook_url },
+          ]);
+        }
+
         setInitial(mapped);
         setValues(mapped);
       })
@@ -219,29 +248,7 @@ export default function SettingsPage() {
         );
       })
       .finally(() => setLoading(false));
-
-    api<SmtpStatus>("/settings/smtp-status")
-      .then(setSmtpStatus)
-      .catch(() => {});
   }, [t]);
-
-  const handleSendTestEmail = async () => {
-    setTestEmailLoading(true);
-    setTestEmailFeedback(null);
-    try {
-      const res = await api<{ message: string; target: string }>("/settings/test-email", {
-        method: "POST",
-      });
-      setTestEmailFeedback({ type: "success", message: res.message });
-    } catch (err) {
-      setTestEmailFeedback({
-        type: "error",
-        message: err instanceof Error ? err.message : "Erreur lors de l'envoi de l'email de test.",
-      });
-    } finally {
-      setTestEmailLoading(false);
-    }
-  };
 
   const dirty = useMemo(() => {
     const changed: string[] = [];
@@ -257,7 +264,7 @@ export default function SettingsPage() {
     setValues((prev) => ({ ...prev, [key]: value }));
   };
 
-  const setBool = (key: (typeof BOOLEAN_KEYS)[number], next: boolean) => {
+  const setBool = (key: string, next: boolean) => {
     set(key, next ? "true" : "false");
   };
 
@@ -273,9 +280,44 @@ export default function SettingsPage() {
     return parsed;
   }, [values]);
 
+  // --- Webhooks Discord ---
+  const webhooks = useMemo(() => parseWebhooks(values.discord_webhooks), [values]);
+  const usableWebhooks = webhooks.filter((hook) => hook.url.trim().length > 0);
+
+  const setWebhooks = (next: DiscordWebhook[]) => {
+    set("discord_webhooks", JSON.stringify(next));
+  };
+
+  const updateWebhook = (index: number, patch: Partial<DiscordWebhook>) => {
+    setWebhooks(webhooks.map((hook, idx) => (idx === index ? { ...hook, ...patch } : hook)));
+  };
+
+  const testWebhook = async (index: number) => {
+    const hook = webhooks[index];
+    if (!hook?.url.trim()) return;
+
+    setTestingWebhook(index);
+    setWebhookFeedback(null);
+    try {
+      const res = await api<{ message: string }>("/settings/test-webhook", {
+        method: "POST",
+        json: { url: hook.url.trim() },
+      });
+      setWebhookFeedback({ type: "success", message: res.message });
+    } catch (caught) {
+      setWebhookFeedback({
+        type: "error",
+        message: caught instanceof Error ? caught.message : t("app.error_generic"),
+      });
+    } finally {
+      setTestingWebhook(null);
+    }
+  };
+
   const resetChanges = () => {
     setValues(initial);
     setError("");
+    setWebhookFeedback(null);
   };
 
   const save = async () => {
@@ -284,11 +326,27 @@ export default function SettingsPage() {
     setError("");
     setSavedSuccess(false);
 
+    const payload = { ...values };
+    if (dirty.includes("discord_webhooks")) {
+      // On ne persiste que les webhooks réellement renseignés, et on solde
+      // l'ancien paramètre mono-webhook pour éviter un doublon fantôme.
+      payload.discord_webhooks = JSON.stringify(
+        usableWebhooks.map((hook) => ({
+          name: hook.name.trim() || "Discord",
+          url: hook.url.trim(),
+        })),
+      );
+      payload.discord_webhook_url = "";
+    }
+
+    const keys = Object.keys(payload).filter((key) => payload[key] !== initial[key]);
+
     try {
-      for (const key of dirty) {
-        await api(`/settings/${key}`, { method: "PATCH", json: { value: values[key] } });
+      for (const key of keys) {
+        await api(`/settings/${key}`, { method: "PATCH", json: { value: payload[key] } });
       }
-      setInitial({ ...values });
+      setValues(payload);
+      setInitial({ ...payload });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     } catch (caught) {
@@ -374,7 +432,7 @@ export default function SettingsPage() {
             <section className="card card--pad">
               <h2 style={{ marginBottom: 16 }}>{t("settings.group_rules")}</h2>
               <div className="form-grid form-grid--2">
-                {NUMBER_KEYS.filter((k) => k.startsWith("max_")).map((key) => (
+                {MAX_KEYS.map((key) => (
                   <label key={key} className="field">
                     <span className="field__label">{t(`settings.${key}`)}</span>
                     <input
@@ -531,303 +589,206 @@ export default function SettingsPage() {
         )}
 
         {/* ===================================================================
-            ONGLET 4 : EMAILS & NOTIFICATIONS (DASHBOARD COMPLET)
+            ONGLET 4 : NOTIFICATIONS (canaux email & Discord)
             =================================================================== */}
         {activeTab === "notifications" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Statut du Serveur SMTP */}
+            {/* Interrupteur général */}
             <section className="card card--pad">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <Mail size={22} color="var(--primary)" />
-                  <h2 style={{ margin: 0 }}>{t("settings.group_email_server")}</h2>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn--accent btn--sm"
-                  disabled={testEmailLoading || !smtpStatus?.configured}
-                  onClick={handleSendTestEmail}
-                >
-                  <Send size={15} />
-                  <span>{testEmailLoading ? t("settings.smtp_testing") : t("settings.smtp_test_btn")}</span>
-                </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <BellRing size={20} color="var(--primary)" />
+                <h2 style={{ margin: 0 }}>{t("settings.group_notifications")}</h2>
               </div>
+              <label className="switch" style={{ alignItems: "flex-start" }}>
+                <input
+                  type="checkbox"
+                  checked={values.notifications_enabled === "true"}
+                  onChange={(event) => setBool("notifications_enabled", event.target.checked)}
+                />
+                <span className="switch__track">
+                  <span className="switch__thumb" />
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: 14.5 }}>
+                    {t("settings.notifications_enabled")}
+                  </strong>
+                  <span className="field__hint">{t("settings.notifications_enabled_hint")}</span>
+                </span>
+              </label>
+            </section>
 
-              {testEmailFeedback && (
-                <p className={`alert ${testEmailFeedback.type === "success" ? "alert--ok" : "alert--error"}`} style={{ marginBottom: 14 }}>
-                  {testEmailFeedback.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                  <span>{testEmailFeedback.message}</span>
+            {/* Salons Discord */}
+            <section className="card card--pad">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                <Hash size={20} color="#5865F2" />
+                <h2 style={{ margin: 0 }}>{t("settings.group_webhooks")}</h2>
+              </div>
+              <p className="field__hint" style={{ marginBottom: 16 }}>
+                {t("settings.group_webhooks_hint")}
+              </p>
+
+              {webhookFeedback && (
+                <p
+                  className={`alert ${webhookFeedback.type === "success" ? "alert--ok" : "alert--error"}`}
+                  style={{ marginBottom: 14 }}
+                >
+                  {webhookFeedback.type === "success" ? (
+                    <CheckCircle2 size={18} />
+                  ) : (
+                    <AlertCircle size={18} />
+                  )}
+                  <span>{webhookFeedback.message}</span>
                 </p>
               )}
 
+              <div className="notif-list">
+                {webhooks.length === 0 && (
+                  <p className="field__hint">{t("settings.webhook_empty")}</p>
+                )}
+
+                {webhooks.map((hook, index) => (
+                  <div key={index} className="webhook-row">
+                    <input
+                      type="text"
+                      className="input webhook-row__name"
+                      value={hook.name}
+                      placeholder={t("settings.webhook_name")}
+                      onChange={(event) => updateWebhook(index, { name: event.target.value })}
+                    />
+                    <input
+                      type="url"
+                      className="input webhook-row__url"
+                      value={hook.url}
+                      placeholder="https://discord.com/api/webhooks/…"
+                      onChange={(event) => updateWebhook(index, { url: event.target.value })}
+                    />
+                    <div className="webhook-row__actions">
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        disabled={testingWebhook !== null || !hook.url.trim()}
+                        onClick={() => testWebhook(index)}
+                      >
+                        <Send size={15} />
+                        <span>
+                          {testingWebhook === index
+                            ? t("settings.webhook_testing")
+                            : t("settings.webhook_test")}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--icon is-danger"
+                        aria-label={t("settings.webhook_remove")}
+                        onClick={() => setWebhooks(webhooks.filter((_, idx) => idx !== index))}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <div>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={() => setWebhooks([...webhooks, { name: "", url: "" }])}
+                  >
+                    <Plus size={16} />
+                    <span>{t("settings.webhook_add")}</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* Événements : email et/ou Discord */}
+            <section className="card card--pad">
               <div
                 style={{
-                  background: smtpStatus?.configured ? "rgba(72, 188, 188, 0.12)" : "rgba(210, 60, 60, 0.12)",
-                  border: `1px solid ${smtpStatus?.configured ? "rgba(72, 188, 188, 0.35)" : "rgba(210, 60, 60, 0.3)"}`,
-                  borderRadius: "var(--radius-md)",
-                  padding: "16px",
-                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  flexWrap: "wrap",
+                  marginBottom: 4,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  {smtpStatus?.configured ? (
-                    <CheckCircle2 size={18} color="var(--accent-deep)" />
-                  ) : (
-                    <AlertCircle size={18} color="var(--danger)" />
-                  )}
-                  <strong style={{ color: smtpStatus?.configured ? "var(--primary-deep)" : "var(--danger)", fontSize: 14.5 }}>
-                    {smtpStatus?.configured
-                      ? t("settings.smtp_status_connected")
-                      : t("settings.smtp_status_unconfigured")}
-                  </strong>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, fontSize: 13, color: "var(--ink-soft)" }}>
-                  <div>
-                    <span>{t("settings.smtp_host_label")} : </span>
-                    <strong style={{ color: "var(--ink-strong)" }}>{smtpStatus?.smtp_host || "—"}</strong>
-                    {smtpStatus?.smtp_port && ` (port ${smtpStatus.smtp_port})`}
-                  </div>
-                  <div>
-                    <span>{t("settings.smtp_sender_label")} : </span>
-                    <strong style={{ color: "var(--ink-strong)" }}>{smtpStatus?.smtp_from || "—"}</strong>
-                  </div>
-                </div>
+                <h2 style={{ margin: 0 }}>{t("settings.group_events")}</h2>
+                {values.notifications_enabled !== "true" && (
+                  <span className="badge badge--danger">{t("settings.notifications_paused")}</span>
+                )}
               </div>
+              <p className="field__hint" style={{ marginBottom: 16 }}>
+                {t("settings.group_events_hint")}
+              </p>
 
-              <div style={{ paddingTop: 8 }}>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)", flexShrink: 0 }}
-                    checked={values.email_notifications_enabled === "true"}
-                    onChange={(event) => setBool("email_notifications_enabled", event.target.checked)}
-                  />
-                  <div style={{ minWidth: 0 }}>
-                    <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: 14.5 }}>
-                      {t("settings.email_notifications_enabled")}
-                    </strong>
-                    <span className="field__hint">{t("settings.email_notifications_enabled_hint")}</span>
-                  </div>
-                </label>
+              <div
+                className="notif-list"
+                style={{ opacity: values.notifications_enabled === "true" ? 1 : 0.55 }}
+              >
+                {NOTIFICATION_EVENTS.map((event) => {
+                  const Icon = event.icon;
+                  const emailKey = channelKey(event.key, "email");
+                  const discordKey = channelKey(event.key, "discord");
+                  const discordOn = values[discordKey] === "true";
+
+                  return (
+                    <div key={event.key} className="notif-row">
+                      <div className="notif-row__text">
+                        <div className="notif-row__title">
+                          <Icon size={17} color={event.color} />
+                          <span>{t(`settings.event_${event.key}`)}</span>
+                        </div>
+                        <p className="notif-row__when">{t(`settings.event_${event.key}_when`)}</p>
+
+                        {event.key === "reminder" && (
+                          <label
+                            className="field"
+                            style={{ marginTop: 10, maxWidth: 220 }}
+                          >
+                            <span className="field__label" style={{ fontSize: 12.5 }}>
+                              {t("settings.email_reminder_hours_before")}
+                            </span>
+                            <input
+                              type="number"
+                              className="input"
+                              min={1}
+                              max={168}
+                              value={values.email_reminder_hours_before ?? "24"}
+                              onChange={(e) => set("email_reminder_hours_before", e.target.value)}
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      <div className="notif-row__channels">
+                        <button
+                          type="button"
+                          className="toggle-pill"
+                          aria-pressed={values[emailKey] === "true"}
+                          onClick={() => setBool(emailKey, values[emailKey] !== "true")}
+                        >
+                          <Mail size={15} />
+                          <span>{t("settings.channel_email")}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="toggle-pill"
+                          aria-pressed={discordOn}
+                          disabled={usableWebhooks.length === 0 && !discordOn}
+                          title={
+                            usableWebhooks.length === 0 ? t("settings.webhook_needed") : undefined
+                          }
+                          onClick={() => setBool(discordKey, !discordOn)}
+                        >
+                          <Hash size={15} />
+                          <span>{t("settings.channel_discord")}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </section>
-
-            {/* Déclencheurs et Règles d'Envoi (Quand, Pourquoi, Comment) */}
-            <section className="card card--pad">
-              <h2 style={{ marginBottom: 4 }}>{t("settings.group_email_triggers")}</h2>
-              <p className="field__hint" style={{ marginBottom: 18 }}>{t("settings.group_email_triggers_hint")}</p>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {/* 1. Code OTP */}
-                <div
-                  style={{
-                    padding: "16px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <KeyRound size={17} color="var(--primary)" style={{ flexShrink: 0 }} />
-                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_otp_title")}</strong>
-                    </div>
-                    <span className="badge badge--muted" style={{ flexShrink: 0 }}>Système (Toujours actif)</span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
-                    <div>{t("settings.email_otp_when")}</div>
-                    <div>{t("settings.email_otp_why")}</div>
-                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_otp_to")}</div>
-                  </div>
-                </div>
-
-                {/* 2. Nouvelle Réservation */}
-                <div
-                  style={{
-                    padding: "16px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <MailCheck size={17} color="var(--primary)" style={{ flexShrink: 0 }} />
-                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_new_res_title")}</strong>
-                    </div>
-                    <input
-                      type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
-                      checked={values.email_notify_new_reservation === "true"}
-                      onChange={(event) => setBool("email_notify_new_reservation", event.target.checked)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
-                    <div>{t("settings.email_new_res_when")}</div>
-                    <div>{t("settings.email_new_res_why")}</div>
-                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_new_res_to")}</div>
-                  </div>
-                </div>
-
-                {/* 3. Validation / Refus */}
-                <div
-                  style={{
-                    padding: "16px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <CheckCircle2 size={17} color="var(--accent-deep)" style={{ flexShrink: 0 }} />
-                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_approval_title")}</strong>
-                    </div>
-                    <input
-                      type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
-                      checked={values.email_notify_approval === "true"}
-                      onChange={(event) => setBool("email_notify_approval", event.target.checked)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
-                    <div>{t("settings.email_approval_when")}</div>
-                    <div>{t("settings.email_approval_why")}</div>
-                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_approval_to")}</div>
-                  </div>
-                </div>
-
-                {/* 4. Rappel avant restitution */}
-                <div
-                  style={{
-                    padding: "16px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <Clock size={17} color="#d97706" style={{ flexShrink: 0 }} />
-                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_reminder_title")}</strong>
-                    </div>
-                    <input
-                      type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
-                      checked={values.email_notify_reminder === "true"}
-                      onChange={(event) => setBool("email_notify_reminder", event.target.checked)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
-                    <div>{t("settings.email_reminder_when")}</div>
-                    <div>{t("settings.email_reminder_why")}</div>
-                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_reminder_to")}</div>
-                  </div>
-                  {values.email_notify_reminder === "true" && (
-                    <div style={{ marginTop: 12 }}>
-                      <label className="field">
-                        <span className="field__label" style={{ fontSize: 12.5 }}>
-                          {t("settings.email_reminder_hours_before")}
-                        </span>
-                        <input
-                          type="number"
-                          className="input"
-                          min={1}
-                          max={168}
-                          value={values.email_reminder_hours_before ?? "24"}
-                          onChange={(e) => set("email_reminder_hours_before", e.target.value)}
-                        />
-                        <span className="field__hint">{t("settings.email_reminder_hours_before_hint")}</span>
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {/* 5. Alerte Retard */}
-                <div
-                  style={{
-                    padding: "16px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <AlertCircle size={17} color="var(--danger)" style={{ flexShrink: 0 }} />
-                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_overdue_title")}</strong>
-                    </div>
-                    <input
-                      type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
-                      checked={values.email_notify_overdue === "true"}
-                      onChange={(event) => setBool("email_notify_overdue", event.target.checked)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
-                    <div>{t("settings.email_overdue_when")}</div>
-                    <div>{t("settings.email_overdue_why")}</div>
-                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_overdue_to")}</div>
-                  </div>
-                </div>
-
-                {/* 6. Alerte Stock Critique */}
-                <div
-                  style={{
-                    padding: "16px",
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
-                      <Package size={17} color="#7c3aed" style={{ flexShrink: 0 }} />
-                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_stock_alert_title")}</strong>
-                    </div>
-                    <input
-                      type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
-                      checked={values.email_notify_stock_alert === "true"}
-                      onChange={(event) => setBool("email_notify_stock_alert", event.target.checked)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
-                    <div>{t("settings.email_stock_alert_when")}</div>
-                    <div>{t("settings.email_stock_alert_why")}</div>
-                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_stock_alert_to")}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--line-soft)" }}>
-                <label className="field">
-                  <span className="field__label">{t("settings.email_staff_notification_address")}</span>
-                  <input
-                    type="email"
-                    className="input"
-                    value={values.email_staff_notification_address ?? ""}
-                    placeholder="contact@florianriviere.com"
-                    onChange={(event) => set("email_staff_notification_address", event.target.value)}
-                  />
-                  <span className="field__hint">{t("settings.email_staff_notification_address_hint")}</span>
-                </label>
-              </div>
-            </section>
-
-            {/* Webhook Discord */}
-            <section className="card card--pad">
-              <h2 style={{ marginBottom: 8 }}>{t("settings.discord_webhook_url")}</h2>
-              <label className="field">
-                <span className="field__hint" style={{ marginBottom: 6 }}>{t("settings.discord_webhook_url_hint")}</span>
-                <input
-                  type="url"
-                  className="input"
-                  value={values.discord_webhook_url ?? ""}
-                  placeholder="https://discord.com/api/webhooks/…"
-                  onChange={(event) => set("discord_webhook_url", event.target.value)}
-                />
-              </label>
             </section>
           </div>
         )}
