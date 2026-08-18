@@ -121,3 +121,78 @@ async def update_setting(
     await db.commit()
     await db.refresh(setting)
     return setting
+
+
+class TestEmailRequest(BaseModel):
+    target_email: str | None = None
+
+
+@router.get("/smtp-status")
+async def get_smtp_status(user: User = Depends(require_admin)):
+    """Retourne l'état de la configuration SMTP."""
+    from app.config import settings
+    configured = bool(settings.smtp_host)
+    return {
+        "configured": configured,
+        "smtp_host": settings.smtp_host,
+        "smtp_port": settings.smtp_port,
+        "smtp_from": settings.smtp_from or settings.smtp_user or (f"noreply@{settings.smtp_host}" if settings.smtp_host else ""),
+        "smtp_user": settings.smtp_user,
+        "smtp_tls": settings.smtp_tls,
+    }
+
+
+@router.post("/test-email")
+async def send_test_email(
+    body: TestEmailRequest | None = None,
+    user: User = Depends(require_admin),
+):
+    """Envoie un email de test pour vérifier la chaîne SMTP."""
+    from app.config import settings
+    from app.utils.email import send_email
+
+    target = (body.target_email.strip() if (body and body.target_email) else user.email)
+    if not settings.smtp_host:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le serveur SMTP n'est pas configuré (variable SMTP_HOST vide dans .env).",
+        )
+
+    subject = "Cook'It — Test de notification email réussi"
+    text = (
+        f"Bonjour {user.display_name},\n\n"
+        f"Ceci est un email de test envoyé depuis le panneau d'administration de Cook'It.\n"
+        f"Si vous recevez ce message, votre configuration SMTP et vos signatures DKIM/SPF fonctionnent parfaitement !\n\n"
+        f"— L'équipe Cook'It Télécom SudParis"
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:sans-serif;color:#0f172a;">
+  <div style="max-width:480px;margin:24px auto;background:#fff;padding:28px;border-radius:12px;border:1px solid #e2e8f0;">
+    <h1 style="color:#0f766e;font-size:20px;margin-top:0;">Cook'It — Test de notification</h1>
+    <p style="color:#334155;font-size:14.5px;line-height:1.5;">
+      Bonjour <strong>{user.display_name}</strong>,<br><br>
+      Ceci est un <strong>email de test</strong> envoyé depuis le panneau d'administration.<br>
+      Votre serveur SMTP (<code>{settings.smtp_host}</code>) est opérationnel et prêt à expédier les rappels et notifications de Cook'It !
+    </p>
+    <div style="background:#f8fafc;padding:12px;border-radius:8px;font-size:12.5px;color:#64748b;margin-top:16px;">
+      Expéditeur : {settings.smtp_from or settings.smtp_user}<br>
+      Destinataire : {target}
+    </div>
+  </div>
+</body>
+</html>"""
+
+    try:
+        await send_email(target, subject, html, text)
+        return {
+            "status": "success",
+            "message": f"Email de test envoyé avec succès à {target} !",
+            "target": target,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Échec de l'envoi de l'email de test : {str(e)}",
+        )

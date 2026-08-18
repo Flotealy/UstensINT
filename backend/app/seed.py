@@ -68,6 +68,46 @@ DEFAULT_SETTINGS: list[dict[str, str]] = [
         "value": "",
         "description": "URL du webhook Discord pour les notifications de réservation",
     },
+    {
+        "key": "email_notifications_enabled",
+        "value": "true",
+        "description": "Activer globalement les notifications par email (true/false)",
+    },
+    {
+        "key": "email_notify_new_reservation",
+        "value": "true",
+        "description": "Envoyer un email de confirmation lors d'une nouvelle réservation (true/false)",
+    },
+    {
+        "key": "email_notify_approval",
+        "value": "true",
+        "description": "Envoyer un email lorsque le prêt est validé ou refusé (true/false)",
+    },
+    {
+        "key": "email_notify_reminder",
+        "value": "true",
+        "description": "Envoyer un email de rappel avant la date de fin du prêt (true/false)",
+    },
+    {
+        "key": "email_reminder_hours_before",
+        "value": "24",
+        "description": "Nombre d'heures avant l'échéance pour envoyer le rappel de restitution",
+    },
+    {
+        "key": "email_notify_overdue",
+        "value": "true",
+        "description": "Envoyer un email d'alerte en cas de retard de restitution (true/false)",
+    },
+    {
+        "key": "email_notify_stock_alert",
+        "value": "true",
+        "description": "Envoyer un email lors du passage d'un consommable sous son seuil d'alerte (true/false)",
+    },
+    {
+        "key": "email_staff_notification_address",
+        "value": "",
+        "description": "Adresse email du mandat / staff pour recevoir les alertes de gestion",
+    },
 ]
 
 # --- Catégories par défaut ---

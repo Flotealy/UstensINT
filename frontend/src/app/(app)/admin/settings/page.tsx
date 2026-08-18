@@ -7,12 +7,17 @@ import {
   BellRing,
   CalendarCheck,
   CheckCircle2,
-  Lock,
+  Clock,
+  KeyRound,
+  Mail,
+  MailCheck,
   MessageSquare,
+  PackageAlert,
   Phone,
   Plus,
   RotateCcw,
   Save,
+  Send,
   Shield,
   ShieldAlert,
   Sparkles,
@@ -33,12 +38,22 @@ const LIST_KEYS = [
   "allowed_domains",
 ] as const;
 
-const NUMBER_KEYS = ["max_reservation_days", "max_advance_days"] as const;
+const NUMBER_KEYS = [
+  "max_reservation_days",
+  "max_advance_days",
+  "email_reminder_hours_before",
+] as const;
 
 const BOOLEAN_KEYS = [
   "auto_approve_reservations",
   "require_phone",
   "require_comments",
+  "email_notifications_enabled",
+  "email_notify_new_reservation",
+  "email_notify_approval",
+  "email_notify_reminder",
+  "email_notify_overdue",
+  "email_notify_stock_alert",
 ] as const;
 
 const DEFAULTS: Record<string, string> = {
@@ -52,9 +67,26 @@ const DEFAULTS: Record<string, string> = {
   blocking_equipment_statuses: '["En réparation","Hors service"]',
   allowed_domains: '["telecom-sudparis.eu"]',
   discord_webhook_url: "",
+  email_notifications_enabled: "true",
+  email_notify_new_reservation: "true",
+  email_notify_approval: "true",
+  email_notify_reminder: "true",
+  email_reminder_hours_before: "24",
+  email_notify_overdue: "true",
+  email_notify_stock_alert: "true",
+  email_staff_notification_address: "",
 };
 
 type SettingsTab = "rules" | "equipment" | "access" | "notifications";
+
+interface SmtpStatus {
+  configured: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_from: string;
+  smtp_user: string;
+  smtp_tls: boolean;
+}
 
 function parseList(raw: string): string[] {
   try {
@@ -69,66 +101,62 @@ function parseList(raw: string): string[] {
     .filter(Boolean);
 }
 
+function serializeList(values: string[]): string {
+  return JSON.stringify(values);
+}
+
 function ListEditor({
   values,
-  onChange,
   label,
+  onChange,
 }: {
   values: string[];
-  onChange: (values: string[]) => void;
   label: string;
+  onChange: (next: string[]) => void;
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
 
   const add = () => {
-    const value = draft.trim();
-    if (!value || values.includes(value)) {
-      setDraft("");
-      return;
-    }
-    onChange([...values, value]);
+    const trimmed = draft.trim();
+    if (!trimmed || values.includes(trimmed)) return;
+    onChange([...values, trimmed]);
     setDraft("");
   };
 
+  const remove = (index: number) => {
+    onChange(values.filter((_, idx) => idx !== index));
+  };
+
   return (
-    <div className="stack stack--sm">
+    <div className="stack" style={{ gap: 8 }}>
       {values.length === 0 ? (
         <p className="field__hint">{t("settings.list_empty")}</p>
       ) : (
-        <div className="inline" style={{ gap: 8 }}>
-          {values.map((value) => (
-            <span
-              key={value}
-              className="chip"
-              style={{ cursor: "default", paddingRight: 8 }}
-            >
-              {value}
+        <div className="chips">
+          {values.map((value, idx) => (
+            <span key={value} className="chip chip--neutral">
+              <span>{value}</span>
               <button
                 type="button"
-                onClick={() => onChange(values.filter((item) => item !== value))}
+                className="chip__remove"
+                onClick={() => remove(idx)}
                 aria-label={t("settings.list_remove", { value })}
-                style={{
-                  display: "flex",
-                  color: "var(--danger)",
-                  padding: 2,
-                  marginLeft: 4,
-                  borderRadius: "50%",
-                }}
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </span>
           ))}
         </div>
       )}
-      <div className="inline" style={{ flexWrap: "nowrap", maxWidth: 440 }}>
+
+      <div className="inline" style={{ gap: 8 }}>
         <input
           type="text"
           className="input"
+          style={{ maxWidth: 280 }}
           value={draft}
           placeholder={t("settings.list_placeholder")}
-          aria-label={label}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -139,11 +167,13 @@ function ListEditor({
         />
         <button
           type="button"
-          className="btn btn--ghost"
+          className="btn btn--outline btn--sm"
           onClick={add}
+          disabled={!draft.trim() || values.includes(draft.trim())}
           aria-label={t("settings.list_add")}
         >
-          <Plus size={18} />
+          <Plus size={16} />
+          <span>{t("settings.list_add")}</span>
         </button>
       </div>
     </div>
@@ -158,84 +188,116 @@ export default function SettingsPage() {
   const [values, setValues] = useState<Record<string, string>>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+
+  const [smtpStatus, setSmtpStatus] = useState<SmtpStatus | null>(null);
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailFeedback, setTestEmailFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-
     api<Setting[]>("/settings")
-      .then((list) => {
-        if (cancelled) return;
-        const map = { ...DEFAULTS };
-        for (const setting of list) map[setting.key] = setting.value;
-        setInitial(map);
-        setValues(map);
+      .then((items) => {
+        const mapped: Record<string, string> = { ...DEFAULTS };
+        for (const item of items) {
+          mapped[item.key] = item.value;
+        }
+        setInitial(mapped);
+        setValues(mapped);
       })
-      .catch((caught: unknown) => {
-        if (cancelled) return;
+      .catch((caught) => {
         setError(
           caught instanceof ApiError && caught.status === 0
             ? t("app.error_network")
-            : t("app.error_generic"),
+            : caught instanceof Error
+              ? caught.message
+              : t("app.error_generic"),
         );
       })
-      .finally(() => !cancelled && setLoading(false));
+      .finally(() => setLoading(false));
 
-    return () => {
-      cancelled = true;
-    };
+    api<SmtpStatus>("/settings/smtp-status")
+      .then(setSmtpStatus)
+      .catch(() => {});
   }, [t]);
 
-  const lists = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const key of LIST_KEYS) map[key] = parseList(values[key] ?? "");
-    return map;
-  }, [values]);
+  const handleSendTestEmail = async () => {
+    setTestEmailLoading(true);
+    setTestEmailFeedback(null);
+    try {
+      const res = await api<{ message: string; target: string }>("/settings/test-email", {
+        method: "POST",
+      });
+      setTestEmailFeedback({ type: "success", message: res.message });
+    } catch (err) {
+      setTestEmailFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Erreur lors de l'envoi de l'email de test.",
+      });
+    } finally {
+      setTestEmailLoading(false);
+    }
+  };
+
+  const dirty = useMemo(() => {
+    const changed: string[] = [];
+    for (const key of Object.keys(values)) {
+      if (values[key] !== initial[key]) {
+        changed.push(key);
+      }
+    }
+    return changed;
+  }, [values, initial]);
 
   const set = (key: string, value: string) => {
-    setValues((current) => ({ ...current, [key]: value }));
-    setSaved(false);
+    setValues((prev) => ({ ...prev, [key]: value }));
   };
 
-  const setBool = (key: string, checked: boolean) => {
-    set(key, checked ? "true" : "false");
+  const setBool = (key: (typeof BOOLEAN_KEYS)[number], next: boolean) => {
+    set(key, next ? "true" : "false");
   };
 
-  const getBool = (key: string): boolean => {
-    return values[key] === "true" || values[key] === "1";
+  const setList = (key: (typeof LIST_KEYS)[number], next: string[]) => {
+    set(key, serializeList(next));
   };
 
-  const setList = (key: string, list: string[]) => set(key, JSON.stringify(list));
-
-  const toggleBlockingStatus = (statusName: string) => {
-    const currentList = lists.blocking_equipment_statuses ?? [];
-    const updated = currentList.includes(statusName)
-      ? currentList.filter((s) => s !== statusName)
-      : [...currentList, statusName];
-    setList("blocking_equipment_statuses", updated);
-  };
-
-  const dirty = Object.keys(values).filter((key) => values[key] !== initial[key]);
+  const lists = useMemo(() => {
+    const parsed: Record<string, string[]> = {};
+    for (const key of LIST_KEYS) {
+      parsed[key] = parseList(values[key] ?? DEFAULTS[key] ?? "");
+    }
+    return parsed;
+  }, [values]);
 
   const resetChanges = () => {
     setValues(initial);
-    setSaved(false);
     setError("");
   };
 
-  const save = async (event?: React.FormEvent) => {
-    if (event) event.preventDefault();
+  const save = async () => {
+    if (dirty.length === 0) return;
     setSaving(true);
     setError("");
+    setSavedSuccess(false);
+
     try {
       for (const key of dirty) {
         await api(`/settings/${key}`, { method: "PATCH", json: { value: values[key] } });
       }
-      setInitial(values);
-      setSaved(true);
+      setInitial({ ...values });
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t("app.error_generic"));
+      setError(
+        caught instanceof ApiError && caught.status === 0
+          ? t("app.error_network")
+          : caught instanceof Error
+            ? caught.message
+            : t("app.error_generic"),
+      );
     } finally {
       setSaving(false);
     }
@@ -250,163 +312,129 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <main className="content">
-        <div className="loading-block">
-          <span className="spinner" aria-hidden />
-          {t("app.loading")}
+      <main className="container page-pad">
+        <div className="card card--pad placeholder-box">
+          <p className="muted">{t("app.loading")}</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="content" style={{ paddingBottom: dirty.length > 0 ? 100 : undefined }}>
+    <main className="container page-pad stack stack--lg">
       <div className="page-head">
-        <div className="page-head__text">
+        <div>
           <h1>{t("settings.title")}</h1>
           <p className="page-head__sub">{t("settings.subtitle")}</p>
         </div>
-        {saved && dirty.length === 0 && (
-          <div className="alert alert--ok" style={{ padding: "8px 14px" }}>
+        {savedSuccess && (
+          <div className="chip chip--success" style={{ animation: "fadeIn 0.25s ease" }}>
             <CheckCircle2 size={16} />
             <span>{t("settings.saved")}</span>
           </div>
         )}
       </div>
 
-      {/* Onglets thématiques du panneau d'administration */}
-      <div className="chips" style={{ borderBottom: "1px solid var(--line-soft)", paddingBottom: 10 }}>
+      {/* Navigation par onglets */}
+      <div className="segmented-nav">
         {tabs.map((tab) => {
-          const TabIcon = tab.icon;
+          const Icon = tab.icon;
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
               type="button"
-              className={`chip ${isActive ? "is-active" : ""}`}
+              className={`segmented-nav__btn ${isActive ? "segmented-nav__btn--active" : ""}`}
               onClick={() => setActiveTab(tab.key)}
             >
-              <TabIcon size={16} />
-              {tab.label}
+              <Icon size={16} />
+              <span>{tab.label}</span>
             </button>
           );
         })}
       </div>
 
-      <form className="stack stack--lg" onSubmit={save} style={{ marginTop: 16 }}>
+      <form
+        className="form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
         {/* ===================================================================
             ONGLET 1 : RÈGLES & RÉSERVATIONS
             =================================================================== */}
         {activeTab === "rules" && (
           <div className="stack stack--lg">
-            {/* Règles temporelles */}
             <section className="card card--pad stack">
               <h2>{t("settings.group_rules")}</h2>
-              <div className="form-grid form-grid--2">
-                {NUMBER_KEYS.map((key) => (
+              <div className="grid grid--2" style={{ gap: 16 }}>
+                {NUMBER_KEYS.filter((k) => k.startsWith("max_")).map((key) => (
                   <label key={key} className="field">
                     <span className="field__label">{t(`settings.${key}`)}</span>
                     <input
                       type="number"
                       className="input"
-                      min="0"
-                      inputMode="numeric"
-                      value={values[key] ?? ""}
+                      min={0}
+                      value={values[key] ?? "0"}
                       onChange={(event) => set(key, event.target.value)}
                     />
                     <span className="field__hint">{t(`settings.${key}_hint`)}</span>
                   </label>
                 ))}
               </div>
+
+              <div className="stack" style={{ gap: 12, marginTop: 8 }}>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={values.auto_approve_reservations === "true"}
+                    onChange={(event) => setBool("auto_approve_reservations", event.target.checked)}
+                  />
+                  <div className="stack" style={{ gap: 2 }}>
+                    <span className="strong">{t("settings.auto_approve_reservations")}</span>
+                    <p className="field__hint" style={{ margin: 0 }}>
+                      {t("settings.auto_approve_reservations_hint")}
+                    </p>
+                  </div>
+                </label>
+              </div>
             </section>
 
-            {/* Auto-approbation des prêts */}
-            <section className="card card--pad stack">
-              <h2>
-                <Zap size={20} color="var(--accent-deep)" />
-                {t("settings.auto_approve_reservations")}
-              </h2>
-              <p className="field__hint">{t("settings.auto_approve_reservations_hint")}</p>
-              <label className="switch" style={{ marginTop: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={getBool("auto_approve_reservations")}
-                  onChange={(event) => setBool("auto_approve_reservations", event.target.checked)}
-                />
-                <span className="switch__track">
-                  <span className="switch__thumb" />
-                </span>
-                <span className="strong">
-                  {getBool("auto_approve_reservations")
-                    ? "Activé (approbation automatique immédiate)"
-                    : "Désactivé (validation manuelle par le mandat requise)"}
-                </span>
-              </label>
-            </section>
-
-            {/* Exigences du formulaire de réservation */}
             <section className="card card--pad stack">
               <h2>{t("settings.group_form")}</h2>
               <p className="field__hint">{t("settings.group_form_hint")}</p>
 
-              <div className="stack" style={{ gap: 16, marginTop: 8 }}>
-                {/* Téléphone obligatoire */}
-                <div
-                  className="row"
-                  style={{
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "14px 18px",
-                  }}
-                >
-                  <div className="row__main">
-                    <Phone size={20} color="var(--primary)" />
-                    <div>
-                      <span className="row__title">{t("settings.require_phone")}</span>
-                      <span className="row__sub">{t("settings.require_phone_hint")}</span>
+              <div className="stack" style={{ gap: 16 }}>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={values.require_phone === "true"}
+                    onChange={(event) => setBool("require_phone", event.target.checked)}
+                  />
+                  <div className="stack" style={{ gap: 2 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <Phone size={16} className="text-muted" />
+                      <span className="strong">{t("settings.require_phone")}</span>
                     </div>
+                    <span className="field__hint">{t("settings.require_phone_hint")}</span>
                   </div>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={getBool("require_phone")}
-                      onChange={(event) => setBool("require_phone", event.target.checked)}
-                    />
-                    <span className="switch__track">
-                      <span className="switch__thumb" />
-                    </span>
-                  </label>
-                </div>
+                </label>
 
-                {/* Commentaire obligatoire */}
-                <div
-                  className="row"
-                  style={{
-                    background: "var(--bg)",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "14px 18px",
-                  }}
-                >
-                  <div className="row__main">
-                    <MessageSquare size={20} color="var(--primary)" />
-                    <div>
-                      <span className="row__title">{t("settings.require_comments")}</span>
-                      <span className="row__sub">{t("settings.require_comments_hint")}</span>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={values.require_comments === "true"}
+                    onChange={(event) => setBool("require_comments", event.target.checked)}
+                  />
+                  <div className="stack" style={{ gap: 2 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <MessageSquare size={16} className="text-muted" />
+                      <span className="strong">{t("settings.require_comments")}</span>
                     </div>
+                    <span className="field__hint">{t("settings.require_comments_hint")}</span>
                   </div>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={getBool("require_comments")}
-                      onChange={(event) => setBool("require_comments", event.target.checked)}
-                    />
-                    <span className="switch__track">
-                      <span className="switch__thumb" />
-                    </span>
-                  </label>
-                </div>
+                </label>
               </div>
             </section>
           </div>
@@ -417,7 +445,6 @@ export default function SettingsPage() {
             =================================================================== */}
         {activeTab === "equipment" && (
           <div className="stack stack--lg">
-            {/* Types de caution */}
             <section className="card card--pad stack">
               <h2>{t("settings.deposit_types")}</h2>
               <div className="field">
@@ -430,7 +457,6 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            {/* États du matériel & Sélection des bloquants */}
             <section className="card card--pad stack">
               <h2>{t("settings.equipment_statuses")}</h2>
               <div className="field">
@@ -438,49 +464,33 @@ export default function SettingsPage() {
                 <ListEditor
                   values={lists.equipment_statuses}
                   label={t("settings.equipment_statuses")}
-                  onChange={(list) => {
-                    setList("equipment_statuses", list);
-                    const newBlocking = (lists.blocking_equipment_statuses ?? []).filter((s) =>
-                      list.includes(s)
-                    );
-                    setList("blocking_equipment_statuses", newBlocking);
-                  }}
+                  onChange={(list) => setList("equipment_statuses", list)}
                 />
               </div>
 
-              <hr className="divider" />
-
-              {/* Choix des états bloquants */}
-              <div className="stack stack--sm">
-                <div className="inline" style={{ gap: 8 }}>
-                  <ShieldAlert size={18} color="var(--danger)" />
+              <div className="stack" style={{ gap: 8, marginTop: 12 }}>
+                <div className="inline" style={{ gap: 6 }}>
+                  <ShieldAlert size={16} className="text-accent" />
                   <span className="strong">{t("settings.group_blocking")}</span>
                 </div>
                 <p className="field__hint">{t("settings.group_blocking_hint")}</p>
-
-                <div className="inline" style={{ gap: 10, marginTop: 6 }}>
-                  {lists.equipment_statuses.map((statusName) => {
-                    const isBlocked = (lists.blocking_equipment_statuses ?? []).includes(statusName);
+                <div className="chips">
+                  {lists.equipment_statuses.map((status) => {
+                    const isBlocking = lists.blocking_equipment_statuses.includes(status);
                     return (
                       <button
-                        key={statusName}
+                        key={status}
                         type="button"
-                        className={`chip ${isBlocked ? "is-active" : ""}`}
-                        style={
-                          isBlocked
-                            ? { background: "var(--danger)", borderColor: "var(--danger)", color: "#fff" }
-                            : {}
-                        }
-                        onClick={() => toggleBlockingStatus(statusName)}
+                        className={`chip ${isBlocking ? "chip--danger" : "chip--neutral"}`}
+                        onClick={() => {
+                          const next = isBlocking
+                            ? lists.blocking_equipment_statuses.filter((s) => s !== status)
+                            : [...lists.blocking_equipment_statuses, status];
+                          setList("blocking_equipment_statuses", next);
+                        }}
                       >
-                        {isBlocked ? <Ban size={14} /> : <Lock size={14} />}
-                        {statusName}
-                        <span
-                          className="chip__count"
-                          style={isBlocked ? { background: "rgba(0,0,0,0.25)", color: "#fff" } : {}}
-                        >
-                          {isBlocked ? "Bloquant" : "Autorisé"}
-                        </span>
+                        {isBlocking && <Ban size={12} />}
+                        <span>{status}</span>
                       </button>
                     );
                   })}
@@ -510,10 +520,292 @@ export default function SettingsPage() {
         )}
 
         {/* ===================================================================
-            ONGLET 4 : NOTIFICATIONS & DISCORD
+            ONGLET 4 : EMAILS & NOTIFICATIONS (DASHBOARD COMPLET)
             =================================================================== */}
         {activeTab === "notifications" && (
           <div className="stack stack--lg">
+            {/* Statut du Serveur SMTP */}
+            <section className="card card--pad stack">
+              <div className="inline" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div className="inline" style={{ gap: 10 }}>
+                  <Mail size={20} className="text-accent" />
+                  <h2 style={{ margin: 0 }}>{t("settings.group_email_server")}</h2>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  disabled={testEmailLoading || !smtpStatus?.configured}
+                  onClick={handleSendTestEmail}
+                >
+                  <Send size={15} className={testEmailLoading ? "spin" : ""} />
+                  <span>{testEmailLoading ? t("settings.smtp_testing") : t("settings.smtp_test_btn")}</span>
+                </button>
+              </div>
+
+              {testEmailFeedback && (
+                <p className={`alert alert--${testEmailFeedback.type}`}>
+                  {testEmailFeedback.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                  <span>{testEmailFeedback.message}</span>
+                </p>
+              )}
+
+              <div
+                style={{
+                  background: smtpStatus?.configured ? "rgba(13, 148, 136, 0.08)" : "rgba(239, 68, 68, 0.08)",
+                  border: `1px solid ${smtpStatus?.configured ? "rgba(13, 148, 136, 0.25)" : "rgba(239, 68, 68, 0.25)"}`,
+                  borderRadius: 10,
+                  padding: "14px 18px",
+                }}
+              >
+                <div className="inline" style={{ gap: 8, marginBottom: 6 }}>
+                  {smtpStatus?.configured ? (
+                    <CheckCircle2 size={18} style={{ color: "#0d9488" }} />
+                  ) : (
+                    <AlertCircle size={18} style={{ color: "#ef4444" }} />
+                  )}
+                  <strong style={{ color: smtpStatus?.configured ? "#0f766e" : "#b91c1c" }}>
+                    {smtpStatus?.configured
+                      ? t("settings.smtp_status_connected")
+                      : t("settings.smtp_status_unconfigured")}
+                  </strong>
+                </div>
+                <div className="grid grid--2" style={{ gap: 8, fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>
+                  <div>
+                    <span>{t("settings.smtp_host_label")} : </span>
+                    <strong style={{ color: "var(--text-strong)" }}>{smtpStatus?.smtp_host || "—"}</strong>
+                    {smtpStatus?.smtp_port && ` (port ${smtpStatus.smtp_port})`}
+                  </div>
+                  <div>
+                    <span>{t("settings.smtp_sender_label")} : </span>
+                    <strong style={{ color: "var(--text-strong)" }}>{smtpStatus?.smtp_from || "—"}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={values.email_notifications_enabled === "true"}
+                    onChange={(event) => setBool("email_notifications_enabled", event.target.checked)}
+                  />
+                  <div className="stack" style={{ gap: 2 }}>
+                    <span className="strong">{t("settings.email_notifications_enabled")}</span>
+                    <span className="field__hint">{t("settings.email_notifications_enabled_hint")}</span>
+                  </div>
+                </label>
+              </div>
+            </section>
+
+            {/* Déclencheurs et Règles d'Envoi (Quand, Pourquoi, Comment) */}
+            <section className="card card--pad stack">
+              <div>
+                <h2>{t("settings.group_email_triggers")}</h2>
+                <p className="field__hint">{t("settings.group_email_triggers_hint")}</p>
+              </div>
+
+              <div className="stack" style={{ gap: 14 }}>
+                {/* 1. Code OTP */}
+                <div
+                  className="card"
+                  style={{
+                    padding: "14px 18px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <KeyRound size={17} style={{ color: "var(--accent)" }} />
+                      <strong style={{ fontSize: 15 }}>{t("settings.email_otp_title")}</strong>
+                    </div>
+                    <span className="chip chip--neutral" style={{ fontSize: 12 }}>
+                      Système (Toujours actif)
+                    </span>
+                  </div>
+                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                    <div>{t("settings.email_otp_when")}</div>
+                    <div>{t("settings.email_otp_why")}</div>
+                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_otp_to")}</div>
+                  </div>
+                </div>
+
+                {/* 2. Nouvelle Réservation */}
+                <div
+                  className="card"
+                  style={{
+                    padding: "14px 18px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <MailCheck size={17} className="text-accent" />
+                      <strong style={{ fontSize: 15 }}>{t("settings.email_new_res_title")}</strong>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={values.email_notify_new_reservation === "true"}
+                      onChange={(event) => setBool("email_notify_new_reservation", event.target.checked)}
+                    />
+                  </div>
+                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                    <div>{t("settings.email_new_res_when")}</div>
+                    <div>{t("settings.email_new_res_why")}</div>
+                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_new_res_to")}</div>
+                  </div>
+                </div>
+
+                {/* 3. Validation / Refus */}
+                <div
+                  className="card"
+                  style={{
+                    padding: "14px 18px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <CheckCircle2 size={17} style={{ color: "#10b981" }} />
+                      <strong style={{ fontSize: 15 }}>{t("settings.email_approval_title")}</strong>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={values.email_notify_approval === "true"}
+                      onChange={(event) => setBool("email_notify_approval", event.target.checked)}
+                    />
+                  </div>
+                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                    <div>{t("settings.email_approval_when")}</div>
+                    <div>{t("settings.email_approval_why")}</div>
+                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_approval_to")}</div>
+                  </div>
+                </div>
+
+                {/* 4. Rappel avant restitution */}
+                <div
+                  className="card"
+                  style={{
+                    padding: "14px 18px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <Clock size={17} style={{ color: "#f59e0b" }} />
+                      <strong style={{ fontSize: 15 }}>{t("settings.email_reminder_title")}</strong>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={values.email_notify_reminder === "true"}
+                      onChange={(event) => setBool("email_notify_reminder", event.target.checked)}
+                    />
+                  </div>
+                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                    <div>{t("settings.email_reminder_when")}</div>
+                    <div>{t("settings.email_reminder_why")}</div>
+                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_reminder_to")}</div>
+                  </div>
+                  {values.email_notify_reminder === "true" && (
+                    <div style={{ marginTop: 12, maxWidth: 300 }}>
+                      <label className="field">
+                        <span className="field__label" style={{ fontSize: 12.5 }}>
+                          {t("settings.email_reminder_hours_before")}
+                        </span>
+                        <input
+                          type="number"
+                          className="input"
+                          min={1}
+                          max={168}
+                          value={values.email_reminder_hours_before ?? "24"}
+                          onChange={(e) => set("email_reminder_hours_before", e.target.value)}
+                        />
+                        <span className="field__hint">{t("settings.email_reminder_hours_before_hint")}</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Alerte Retard */}
+                <div
+                  className="card"
+                  style={{
+                    padding: "14px 18px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <AlertCircle size={17} style={{ color: "#ef4444" }} />
+                      <strong style={{ fontSize: 15 }}>{t("settings.email_overdue_title")}</strong>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={values.email_notify_overdue === "true"}
+                      onChange={(event) => setBool("email_notify_overdue", event.target.checked)}
+                    />
+                  </div>
+                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                    <div>{t("settings.email_overdue_when")}</div>
+                    <div>{t("settings.email_overdue_why")}</div>
+                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_overdue_to")}</div>
+                  </div>
+                </div>
+
+                {/* 6. Alerte Stock Critique */}
+                <div
+                  className="card"
+                  style={{
+                    padding: "14px 18px",
+                    background: "var(--surface-sunken)",
+                    border: "1px solid var(--border-soft)",
+                    borderRadius: 10,
+                  }}
+                >
+                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div className="inline" style={{ gap: 8 }}>
+                      <PackageAlert size={17} style={{ color: "#8b5cf6" }} />
+                      <strong style={{ fontSize: 15 }}>{t("settings.email_stock_alert_title")}</strong>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={values.email_notify_stock_alert === "true"}
+                      onChange={(event) => setBool("email_notify_stock_alert", event.target.checked)}
+                    />
+                  </div>
+                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                    <div>{t("settings.email_stock_alert_when")}</div>
+                    <div>{t("settings.email_stock_alert_why")}</div>
+                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_stock_alert_to")}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12 }}>
+                <label className="field">
+                  <span className="field__label">{t("settings.email_staff_notification_address")}</span>
+                  <input
+                    type="email"
+                    className="input"
+                    value={values.email_staff_notification_address ?? ""}
+                    placeholder="contact@florianriviere.com"
+                    onChange={(event) => set("email_staff_notification_address", event.target.value)}
+                  />
+                  <span className="field__hint">{t("settings.email_staff_notification_address_hint")}</span>
+                </label>
+              </div>
+            </section>
+
+            {/* Webhook Discord */}
             <section className="card card--pad stack">
               <h2>{t("settings.discord_webhook_url")}</h2>
               <label className="field">
