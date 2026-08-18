@@ -64,51 +64,47 @@ DEFAULT_SETTINGS: list[dict[str, str]] = [
         "description": "Domaines email autorisés pour l'inscription (JSON array)",
     },
     {
-        "key": "discord_webhook_url",
-        "value": "",
-        "description": "URL du webhook Discord pour les notifications de réservation",
+        "key": "discord_webhooks",
+        "value": json.dumps([]),
+        "description": "Webhooks Discord recevant les notifications (JSON array de {name, url})",
     },
     {
-        "key": "email_notifications_enabled",
+        "key": "notifications_enabled",
         "value": "true",
-        "description": "Activer globalement les notifications par email (true/false)",
-    },
-    {
-        "key": "email_notify_new_reservation",
-        "value": "true",
-        "description": "Envoyer un email de confirmation lors d'une nouvelle réservation (true/false)",
-    },
-    {
-        "key": "email_notify_approval",
-        "value": "true",
-        "description": "Envoyer un email lorsque le prêt est validé ou refusé (true/false)",
-    },
-    {
-        "key": "email_notify_reminder",
-        "value": "true",
-        "description": "Envoyer un email de rappel avant la date de fin du prêt (true/false)",
+        "description": "Interrupteur général des notifications automatiques (true/false)",
     },
     {
         "key": "email_reminder_hours_before",
         "value": "24",
         "description": "Nombre d'heures avant l'échéance pour envoyer le rappel de restitution",
     },
-    {
-        "key": "email_notify_overdue",
-        "value": "true",
-        "description": "Envoyer un email d'alerte en cas de retard de restitution (true/false)",
-    },
-    {
-        "key": "email_notify_stock_alert",
-        "value": "true",
-        "description": "Envoyer un email lors du passage d'un consommable sous son seuil d'alerte (true/false)",
-    },
-    {
-        "key": "email_staff_notification_address",
-        "value": "",
-        "description": "Adresse email du mandat / staff pour recevoir les alertes de gestion",
-    },
 ]
+
+# Un couple de clés email/discord par événement notifiable.
+# L'email est actif par défaut, Discord tant qu'aucun webhook n'est configuré.
+NOTIFICATION_EVENTS: list[tuple[str, str]] = [
+    ("new_reservation", "nouvelle demande de réservation"),
+    ("approval", "validation ou refus d'un prêt"),
+    ("reminder", "rappel avant la restitution"),
+    ("overdue", "matériel non restitué à l'échéance"),
+    ("stock_alert", "consommable à réapprovisionner ou périmé"),
+]
+
+for _event, _label in NOTIFICATION_EVENTS:
+    DEFAULT_SETTINGS.append(
+        {
+            "key": f"notify_{_event}_email",
+            "value": "true",
+            "description": f"Notifier par email : {_label} (true/false)",
+        }
+    )
+    DEFAULT_SETTINGS.append(
+        {
+            "key": f"notify_{_event}_discord",
+            "value": "false",
+            "description": f"Notifier sur Discord : {_label} (true/false)",
+        }
+    )
 
 # --- Catégories par défaut ---
 DEFAULT_CATEGORIES: list[dict[str, str]] = [

@@ -6,7 +6,7 @@ Accessible uniquement aux utilisateurs avec le rôle Mandat (moderator) ou Admin
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +16,38 @@ from app.models.stock import ClubStock
 from app.models.user import User
 from app.schemas.stock import StockItemCreate, StockItemOut, StockItemUpdate
 from app.services.audit import log_audit
+from app.services.notify import (
+    STOCK_ALERT_STATUSES,
+    build_notification,
+    send_notification,
+)
 
 router = APIRouter(prefix="/stock", tags=["Stock & Consommables"])
+
+
+async def _queue_stock_alert(
+    db: AsyncSession, background_tasks: BackgroundTasks, item: ClubStock
+) -> None:
+    """Prévenir le mandat qu'un consommable demande une action (réappro / péremption)."""
+    notification = await build_notification(
+        db,
+        "stock_alert",
+        title=f"Stock à surveiller — {item.name}",
+        summary=(
+            f"« {item.name} » vient de passer au statut « {item.status} ». "
+            "Pensez à réapprovisionner ou à retirer l'article de la réserve."
+        ),
+        fields=[
+            ("Article", item.name),
+            ("Statut", item.status),
+            ("Quantité", item.quantity),
+            ("Catégorie", item.category or "—"),
+            ("Emplacement", item.location or "—"),
+        ],
+        include_staff=True,
+    )
+    if notification:
+        background_tasks.add_task(send_notification, notification)
 
 
 @router.get("", response_model=list[StockItemOut])

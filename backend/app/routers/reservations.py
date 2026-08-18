@@ -7,7 +7,7 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,6 +25,7 @@ from app.schemas.reservation import (
     ReservationUpdate,
 )
 from app.services.audit import log_audit
+from app.services.notify import build_notification, send_notification
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,15 @@ def _as_bool(raw: str | None, default: bool = False) -> bool:
     return str(raw).strip().lower() in ("true", "1", "yes", "oui")
 
 
+def _format_period(start: date, end: date) -> str:
+    return f"du {start.strftime('%d/%m/%Y')} au {end.strftime('%d/%m/%Y')}"
+
+
 @router.post("", response_model=ReservationPublic, status_code=status.HTTP_201_CREATED)
 async def create_reservation(
     body: ReservationCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -208,6 +214,34 @@ async def create_reservation(
     )
     await db.commit()
 
+    # --- Notification « nouvelle réservation » (emprunteur + mandat) ---
+    equipment_names = ", ".join(eq.name for eq in equipment_list)
+    notification = await build_notification(
+        db,
+        "new_reservation",
+        title="Nouvelle demande de prêt",
+        summary=(
+            f"{user.display_name} a réservé {len(body.items)} matériel(s) "
+            f"{_format_period(body.start_date, body.end_date)}."
+            + (
+                " La demande est automatiquement validée."
+                if auto_approve
+                else " Elle attend la validation du mandat."
+            )
+        ),
+        fields=[
+            ("Emprunteur", f"{user.display_name} ({user.email})"),
+            ("Période", _format_period(body.start_date, body.end_date)),
+            ("Matériel", equipment_names),
+            ("Caution", f"{total_deposit:.2f} €"),
+            ("Statut", "Validée" if auto_approve else "En attente"),
+        ],
+        email_to=[user.email],
+        include_staff=True,
+    )
+    if notification:
+        background_tasks.add_task(send_notification, notification)
+
     final_res = await db.execute(
         select(Reservation)
         .options(
@@ -265,6 +299,7 @@ async def update_reservation(
     res_id: uuid.UUID,
     body: ReservationUpdate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_moderator),
 ):
@@ -348,6 +383,47 @@ async def update_reservation(
         request=request,
     )
 
+    # Instantané pris avant le commit : les attributs sont encore chargés.
+    status_change = changes.get("status")
+    snapshot = {
+        "email": res.user.email if res.user else None,
+        "period": _format_period(res.start_date, res.end_date),
+        "equipment": ", ".join(item.equipment.name for item in res.items),
+        "deposit": f"{float(res.total_deposit or 0):.2f} €",
+        "cancel_comment": res.cancel_comment,
+    }
+
     await db.commit()
     await db.refresh(res)
+
+    # --- Notification « validation / refus » à l'emprunteur ---
+    if status_change and status_change["to"] in ("approved", "cancelled"):
+        approved = status_change["to"] == "approved"
+        notification = await build_notification(
+            db,
+            "approval",
+            title="Prêt validé" if approved else "Demande de prêt refusée",
+            summary=(
+                f"La réservation {snapshot['period']} "
+                + (
+                    "est validée : le matériel attend son emprunteur au local Cook'It."
+                    if approved
+                    else "n'a pas été retenue par le mandat."
+                )
+            ),
+            fields=[
+                ("Période", snapshot["period"]),
+                ("Matériel", snapshot["equipment"]),
+                ("Caution", snapshot["deposit"]),
+            ]
+            + (
+                [("Motif", snapshot["cancel_comment"])]
+                if not approved and snapshot["cancel_comment"]
+                else []
+            ),
+            email_to=[snapshot["email"]] if snapshot["email"] else [],
+        )
+        if notification:
+            background_tasks.add_task(send_notification, notification)
+
     return res

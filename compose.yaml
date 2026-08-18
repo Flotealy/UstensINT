@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - NEXT_PUBLIC_API_URL=/api
+    volumes:
+      - ./frontend/public:/app/public:ro
     depends_on:
       backend:
         condition: service_started

@@ -134,7 +134,14 @@ export default function LoginPage() {
 
       <div className="login__main">
         <header className="login__hero">
-          <img className="login__logo" src="/logo.png" alt="Cook'It" />
+          <img
+            className="login__logo"
+            src="/logo.png"
+            alt="Cook'It"
+            width={200}
+            height={200}
+            style={{ borderRadius: 20, objectFit: "contain", display: "block" }}
+          />
           <h1 className="login__title">Ustens&rsquo;INT</h1>
           <div className="login__rule" />
           <p className="login__baseline">{t("login.tagline")}</p>
