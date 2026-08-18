@@ -29,6 +29,9 @@
   /* --- Typographie --- */
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-roboto), system-ui, -apple-system, sans-serif;
+  /* Titrage d'enseigne (page de connexion) : élégance « table étoilée ». */
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Didot, Garamond,
+    Georgia, serif;
 
   /* --- Rayons de courbure --- */
   --radius-lg: 18px;
@@ -1687,80 +1690,30 @@ button.row:hover,
 }
 
 /* --------------------------------------------------------------------------
-   13. Page de Connexion (Login Split-screen)
+   13. Page de Connexion (enseigne centrée + carte)
    -------------------------------------------------------------------------- */
 
 .login {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
+  overflow-x: hidden;
 }
 
-.login__aside {
-  position: relative;
-  background: var(--primary-deep);
-  color: #fff;
-  padding: 36px 24px;
-  overflow: hidden;
-}
-
-.login__aside::after {
+/* Halo décoratif derrière l'enseigne */
+.login::before {
   content: "";
   position: absolute;
-  inset: -40% -20% auto -20%;
-  height: 140%;
+  inset: -30% -10% auto -10%;
+  height: 90%;
   background: radial-gradient(
-    circle,
+    ellipse at 50% 60%,
     rgba(72, 188, 188, 0.22) 0%,
-    rgba(1, 45, 56, 0) 70%
+    rgba(238, 243, 244, 0) 65%
   );
   pointer-events: none;
-}
-
-.login__aside-inner {
-  position: relative;
-  z-index: 1;
-  max-width: 480px;
-}
-
-.login__logo {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 12px;
-}
-
-.login__title {
-  font-size: 2.2rem;
-  color: #fff;
-}
-
-.login__rule {
-  width: 60px;
-  height: 3px;
-  background: var(--accent);
-  border-radius: 2px;
-  margin: 16px 0;
-}
-
-.login__baseline {
-  color: var(--surface-tint);
-  font-size: 15.5px;
-  line-height: 1.5;
-}
-
-.login__main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 32px 20px 48px;
-}
-
-.login__card {
-  width: 100%;
-  max-width: 440px;
 }
 
 .login__lang {
@@ -1770,22 +1723,95 @@ button.row:hover,
   z-index: 2;
 }
 
-@media (min-width: 900px) {
-  .login {
-    flex-direction: row;
+.login__main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  padding: 76px 20px 48px;
+}
+
+.login__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.login__logo {
+  width: clamp(180px, 46vw, 280px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 22px rgba(1, 45, 56, 0.16));
+}
+
+.login__title {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 13vw, 5.6rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.015em;
+  color: var(--primary-deep);
+  margin-top: 14px;
+}
+
+.login__rule {
+  width: 88px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(72, 188, 188, 0) 0%,
+    var(--accent) 50%,
+    rgba(72, 188, 188, 0) 100%
+  );
+  margin: 18px 0 14px;
+}
+
+.login__baseline {
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  max-width: 34ch;
+  line-height: 1.6;
+}
+
+.login__card {
+  width: 100%;
+  max-width: 440px;
+}
+
+.login__footer {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  border-top-color: var(--line);
+  justify-content: center;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .login__footer {
+    justify-content: space-between;
+    text-align: left;
   }
-  .login__aside {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 64px 48px;
+}
+
+@media (min-width: 900px) {
+  .login__main {
+    gap: 38px;
+    padding: 88px 48px 64px;
   }
   .login__title {
-    font-size: 3.2rem;
+    letter-spacing: 0.02em;
   }
-  .login__main {
-    flex: 1;
-    padding: 64px 48px;
+  .login__baseline {
+    font-size: 13.5px;
   }
 }
 

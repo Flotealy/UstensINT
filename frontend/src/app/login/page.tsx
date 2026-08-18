@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { AlertCircle, CheckCircle2, KeyRound, Mail, RefreshCw, ArrowLeft } from "lucide-react";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { useTranslation } from "../components/I18nProvider";
@@ -127,30 +128,18 @@ export default function LoginPage() {
 
   return (
     <div className="login">
-      <div className="login__aside">
-        <div className="login__lang">
-          <LanguageSwitcher tone="dark" />
-        </div>
-        <div className="login__aside-inner">
-          <div className="login__logo">
-            <span className="nav__brand-mark">
-              <img
-                src="/logo.png"
-                alt="Cook'It"
-                width={30}
-                height={30}
-                style={{ objectFit: "contain", borderRadius: 6 }}
-              />
-            </span>
-            <h1 className="login__title">{t("app.title")}</h1>
-          </div>
-          <p className="nav__brand-sub">Cook'It</p>
-          <div className="login__rule" />
-          <p className="login__baseline">{t("login.tagline")}</p>
-        </div>
+      <div className="login__lang">
+        <LanguageSwitcher />
       </div>
 
       <div className="login__main">
+        <header className="login__hero">
+          <img className="login__logo" src="/logo.png" alt="Cook'It" />
+          <h1 className="login__title">Ustens&rsquo;INT</h1>
+          <div className="login__rule" />
+          <p className="login__baseline">{t("login.tagline")}</p>
+        </header>
+
         <div className="card card--pad login__card">
           {step === "email" ? (
             /* --- ÉTAPE 1 : Saisie Email --- */
@@ -306,6 +295,14 @@ export default function LoginPage() {
           )}
         </div>
       </div>
+
+      <footer className="footer login__footer">
+        <span>{t("footer.rights", { year: new Date().getFullYear() })}</span>
+        <span className="footer__links">
+          <Link href="/mentions-legales">{t("footer.legal")}</Link>
+          <Link href="/politique-de-confidentialite">{t("footer.privacy")}</Link>
+        </span>
+      </footer>
     </div>
   );
 }

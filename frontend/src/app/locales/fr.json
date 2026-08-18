@@ -51,7 +51,7 @@
   },
   "login": {
     "heading": "Connexion Cook'It",
-    "tagline": "Réservez le matériel et gérez le stock du club Cook'It : choisissez vos ustensiles, indiquez vos dates, récupérez-les sur place.",
+    "tagline": "Site de réservation de matériel Cook'It",
     "email_label": "Adresse email",
     "email_placeholder": "prenom.nom@telecom-sudparis.eu",
     "email_hint": "Un code de sécurité à 6 caractères vous sera envoyé par email.",

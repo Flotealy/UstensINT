@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Newsreader, Roboto } from "next/font/google";
+import { Cormorant_Garamond, Newsreader, Roboto } from "next/font/google";
 import "./globals.css";
 import { I18nProvider, LOCALE_COOKIE, Locale } from "./components/I18nProvider";
 import CookieBanner from "./components/CookieBanner";
@@ -9,6 +9,14 @@ const newsreader = Newsreader({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-newsreader",
+  display: "swap",
+});
+
+// Titrage « grande maison » : réservé aux enseignes (page de connexion).
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-cormorant",
   display: "swap",
 });
 
@@ -42,7 +50,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale: Locale = stored === "en" ? "en" : "fr";
 
   return (
-    <html lang={locale} className={`${newsreader.variable} ${roboto.variable}`}>
+    <html
+      lang={locale}
+      className={`${newsreader.variable} ${roboto.variable} ${cormorant.variable}`}
+    >
       <body>
         <I18nProvider initialLocale={locale}>
           {children}

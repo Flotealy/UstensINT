@@ -51,7 +51,7 @@
   },
   "login": {
     "heading": "Cook'It Sign in",
-    "tagline": "Book cooking equipment and access club supplies in a few clicks.",
+    "tagline": "Cook'It equipment booking site",
     "email_label": "Email address",
     "email_placeholder": "firstname.lastname@telecom-sudparis.eu",
     "email_hint": "A 6-character security code will be sent to your email.",
