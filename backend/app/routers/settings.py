@@ -5,6 +5,7 @@ Router — Settings (Paramètres globaux).
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
