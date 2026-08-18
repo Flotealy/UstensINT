@@ -7,6 +7,7 @@ import json
 import logging
 import smtplib
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,10 +84,14 @@ def _send_smtp_sync(
         return
 
     from_addr = settings.smtp_from or settings.smtp_user or f"noreply@{settings.smtp_host}"
+    domain = from_addr.split("@")[1] if "@" in from_addr else (settings.smtp_host or "florianriviere.com")
+
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = f"Cook'It <{from_addr}>"
     msg["To"] = to_addr
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=domain)
     msg.set_content(text_content or "Veuillez activer la vue HTML pour lire cet email.")
 
     if html_content:
