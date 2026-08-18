@@ -133,7 +133,7 @@ function ListEditor({
       {values.length === 0 ? (
         <p className="field__hint">{t("settings.list_empty")}</p>
       ) : (
-        <div className="chips">
+        <div className="chips" style={{ flexWrap: "wrap" }}>
           {values.map((value, idx) => (
             <span key={value} className="chip">
               <span>{value}</span>
@@ -150,11 +150,11 @@ function ListEditor({
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <input
           type="text"
           className="input"
-          style={{ maxWidth: 280 }}
+          style={{ flex: "1 1 180px", minWidth: 0 }}
           value={draft}
           placeholder={t("settings.list_placeholder")}
           onChange={(event) => setDraft(event.target.value)}
@@ -168,6 +168,7 @@ function ListEditor({
         <button
           type="button"
           className="btn btn--ghost btn--sm"
+          style={{ flexShrink: 0 }}
           onClick={add}
           disabled={!draft.trim() || values.includes(draft.trim())}
           aria-label={t("settings.list_add")}
@@ -321,7 +322,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="content">
+    <main className="content" style={{ paddingBottom: dirty.length > 0 ? "110px" : undefined }}>
       {/* En-tête de page */}
       <div className="page-head">
         <div className="page-head__text">
@@ -336,7 +337,7 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Barre d'onglets au design Cook'It */}
+      {/* Barre d'onglets au design Cook'It avec défilement fluide sur mobile */}
       <div className="filters">
         <div className="chips">
           {tabs.map((tab) => {
@@ -392,11 +393,11 @@ export default function SettingsPage() {
                 <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)", flexShrink: 0 }}
                     checked={values.auto_approve_reservations === "true"}
                     onChange={(event) => setBool("auto_approve_reservations", event.target.checked)}
                   />
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: 14.5 }}>
                       {t("settings.auto_approve_reservations")}
                     </strong>
@@ -416,11 +417,11 @@ export default function SettingsPage() {
                 <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)", flexShrink: 0 }}
                     checked={values.require_phone === "true"}
                     onChange={(event) => setBool("require_phone", event.target.checked)}
                   />
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <Phone size={15} color="var(--primary)" />
                       <strong style={{ color: "var(--ink-strong)", fontSize: 14.5 }}>{t("settings.require_phone")}</strong>
@@ -432,11 +433,11 @@ export default function SettingsPage() {
                 <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)", flexShrink: 0 }}
                     checked={values.require_comments === "true"}
                     onChange={(event) => setBool("require_comments", event.target.checked)}
                   />
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <MessageSquare size={15} color="var(--primary)" />
                       <strong style={{ color: "var(--ink-strong)", fontSize: 14.5 }}>{t("settings.require_comments")}</strong>
@@ -483,7 +484,7 @@ export default function SettingsPage() {
                   <strong style={{ color: "var(--ink-strong)" }}>{t("settings.group_blocking")}</strong>
                 </div>
                 <p className="field__hint" style={{ marginBottom: 12 }}>{t("settings.group_blocking_hint")}</p>
-                <div className="chips">
+                <div className="chips" style={{ flexWrap: "wrap" }}>
                   {lists.equipment_statuses.map((status) => {
                     const isBlocking = lists.blocking_equipment_statuses.includes(status);
                     return (
@@ -564,7 +565,7 @@ export default function SettingsPage() {
                   background: smtpStatus?.configured ? "rgba(72, 188, 188, 0.12)" : "rgba(210, 60, 60, 0.12)",
                   border: `1px solid ${smtpStatus?.configured ? "rgba(72, 188, 188, 0.35)" : "rgba(210, 60, 60, 0.3)"}`,
                   borderRadius: "var(--radius-md)",
-                  padding: "16px 20px",
+                  padding: "16px",
                   marginBottom: 16,
                 }}
               >
@@ -580,7 +581,7 @@ export default function SettingsPage() {
                       : t("settings.smtp_status_unconfigured")}
                   </strong>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, fontSize: 13, color: "var(--ink-soft)" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8, fontSize: 13, color: "var(--ink-soft)" }}>
                   <div>
                     <span>{t("settings.smtp_host_label")} : </span>
                     <strong style={{ color: "var(--ink-strong)" }}>{smtpStatus?.smtp_host || "—"}</strong>
@@ -597,11 +598,11 @@ export default function SettingsPage() {
                 <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)", flexShrink: 0 }}
                     checked={values.email_notifications_enabled === "true"}
                     onChange={(event) => setBool("email_notifications_enabled", event.target.checked)}
                   />
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: 14.5 }}>
                       {t("settings.email_notifications_enabled")}
                     </strong>
@@ -620,18 +621,18 @@ export default function SettingsPage() {
                 {/* 1. Code OTP */}
                 <div
                   style={{
-                    padding: "16px 18px",
+                    padding: "16px",
                     background: "var(--bg)",
                     border: "1px solid var(--line-soft)",
                     borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <KeyRound size={17} color="var(--primary)" />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <KeyRound size={17} color="var(--primary)" style={{ flexShrink: 0 }} />
                       <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_otp_title")}</strong>
                     </div>
-                    <span className="badge badge--muted">Système (Toujours actif)</span>
+                    <span className="badge badge--muted" style={{ flexShrink: 0 }}>Système (Toujours actif)</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_otp_when")}</div>
@@ -643,20 +644,20 @@ export default function SettingsPage() {
                 {/* 2. Nouvelle Réservation */}
                 <div
                   style={{
-                    padding: "16px 18px",
+                    padding: "16px",
                     background: "var(--bg)",
                     border: "1px solid var(--line-soft)",
                     borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <MailCheck size={17} color="var(--primary)" />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <MailCheck size={17} color="var(--primary)" style={{ flexShrink: 0 }} />
                       <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_new_res_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
                       checked={values.email_notify_new_reservation === "true"}
                       onChange={(event) => setBool("email_notify_new_reservation", event.target.checked)}
                     />
@@ -671,20 +672,20 @@ export default function SettingsPage() {
                 {/* 3. Validation / Refus */}
                 <div
                   style={{
-                    padding: "16px 18px",
+                    padding: "16px",
                     background: "var(--bg)",
                     border: "1px solid var(--line-soft)",
                     borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <CheckCircle2 size={17} color="var(--accent-deep)" />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <CheckCircle2 size={17} color="var(--accent-deep)" style={{ flexShrink: 0 }} />
                       <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_approval_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
                       checked={values.email_notify_approval === "true"}
                       onChange={(event) => setBool("email_notify_approval", event.target.checked)}
                     />
@@ -699,20 +700,20 @@ export default function SettingsPage() {
                 {/* 4. Rappel avant restitution */}
                 <div
                   style={{
-                    padding: "16px 18px",
+                    padding: "16px",
                     background: "var(--bg)",
                     border: "1px solid var(--line-soft)",
                     borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Clock size={17} color="#d97706" />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <Clock size={17} color="#d97706" style={{ flexShrink: 0 }} />
                       <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_reminder_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
                       checked={values.email_notify_reminder === "true"}
                       onChange={(event) => setBool("email_notify_reminder", event.target.checked)}
                     />
@@ -723,7 +724,7 @@ export default function SettingsPage() {
                     <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_reminder_to")}</div>
                   </div>
                   {values.email_notify_reminder === "true" && (
-                    <div style={{ marginTop: 12, maxWidth: 280 }}>
+                    <div style={{ marginTop: 12 }}>
                       <label className="field">
                         <span className="field__label" style={{ fontSize: 12.5 }}>
                           {t("settings.email_reminder_hours_before")}
@@ -745,20 +746,20 @@ export default function SettingsPage() {
                 {/* 5. Alerte Retard */}
                 <div
                   style={{
-                    padding: "16px 18px",
+                    padding: "16px",
                     background: "var(--bg)",
                     border: "1px solid var(--line-soft)",
                     borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <AlertCircle size={17} color="var(--danger)" />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <AlertCircle size={17} color="var(--danger)" style={{ flexShrink: 0 }} />
                       <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_overdue_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
                       checked={values.email_notify_overdue === "true"}
                       onChange={(event) => setBool("email_notify_overdue", event.target.checked)}
                     />
@@ -773,20 +774,20 @@ export default function SettingsPage() {
                 {/* 6. Alerte Stock Critique */}
                 <div
                   style={{
-                    padding: "16px 18px",
+                    padding: "16px",
                     background: "var(--bg)",
                     border: "1px solid var(--line-soft)",
                     borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Package size={17} color="#7c3aed" />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+                      <Package size={17} color="#7c3aed" style={{ flexShrink: 0 }} />
                       <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_stock_alert_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
-                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)", flexShrink: 0 }}
                       checked={values.email_notify_stock_alert === "true"}
                       onChange={(event) => setBool("email_notify_stock_alert", event.target.checked)}
                     />
@@ -839,16 +840,16 @@ export default function SettingsPage() {
         )}
       </form>
 
-      {/* Barre d'enregistrement flottante */}
+      {/* Barre d'enregistrement flottante 100% responsive */}
       {dirty.length > 0 && (
-        <div className="cart-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 40 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <strong style={{ display: "block", fontSize: 14, color: "var(--ink-strong)" }}>{t("settings.unsaved_changes")}</strong>
-            <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>
+        <div className="save-bar">
+          <div className="save-bar__text">
+            <strong className="save-bar__title">{t("settings.unsaved_changes")}</strong>
+            <span className="save-bar__sub">
               {dirty.length} paramètre(s) modifié(s)
             </span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="save-bar__actions">
             <button
               type="button"
               className="btn btn--ghost btn--sm"
