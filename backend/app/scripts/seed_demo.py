@@ -327,20 +327,20 @@ DEMO_EQUIPMENT = [
 ]
 
 DEMO_STOCK = [
-    {"name": "Farine de Blé T55", "category": "Ingrédients Secs", "quantity": 12.0, "unit": "kg", "min_threshold": 3.0, "location": "Étagère Stock Sec"},
-    {"name": "Sucre Blanc en Poudre", "category": "Ingrédients Secs", "quantity": 8.0, "unit": "kg", "min_threshold": 2.0, "location": "Étagère Stock Sec"},
-    {"name": "Sucre Glace", "category": "Ingrédients Secs", "quantity": 3.5, "unit": "kg", "min_threshold": 1.0, "location": "Étagère Stock Sec"},
-    {"name": "Huile de Tournesol", "category": "Huiles & Condiments", "quantity": 6.0, "unit": "L", "min_threshold": 2.0, "location": "Placard Condiments"},
-    {"name": "Huile d'Olive Vierge Extra", "category": "Huiles & Condiments", "quantity": 4.0, "unit": "L", "min_threshold": 1.5, "location": "Placard Condiments"},
-    {"name": "Levure Chimique (Alsa)", "category": "Pâtisserie", "quantity": 35.0, "unit": "sachets", "min_threshold": 10.0, "location": "Boîte Pâtisserie"},
-    {"name": "Sucre Vanillé", "category": "Pâtisserie", "quantity": 40.0, "unit": "sachets", "min_threshold": 15.0, "location": "Boîte Pâtisserie"},
-    {"name": "Pépites de Chocolat Noir 50%", "category": "Pâtisserie", "quantity": 2.5, "unit": "kg", "min_threshold": 1.0, "location": "Boîte Pâtisserie"},
-    {"name": "Rouleaux de Papier Cuisson", "category": "Consommables", "quantity": 8.0, "unit": "rouleaux", "min_threshold": 2.0, "location": "Tiroir Fournitures"},
-    {"name": "Rouleaux d'Aluminium Alimentaire", "category": "Consommables", "quantity": 6.0, "unit": "rouleaux", "min_threshold": 2.0, "location": "Tiroir Fournitures"},
-    {"name": "Film Étirable Alimentaire 300m", "category": "Consommables", "quantity": 4.0, "unit": "rouleaux", "min_threshold": 2.0, "location": "Tiroir Fournitures"},
-    {"name": "Liquide Vaisselle Écologique", "category": "Entretien", "quantity": 5.0, "unit": "L", "min_threshold": 1.5, "location": "Sous-évier Local"},
-    {"name": "Éponges double face avec grattoir", "category": "Entretien", "quantity": 16.0, "unit": "unités", "min_threshold": 4.0, "location": "Sous-évier Local"},
-    {"name": "Sacs Poubelle 50L renforcés", "category": "Entretien", "quantity": 45.0, "unit": "unités", "min_threshold": 15.0, "location": "Local Cook'It"},
+    {"name": "Farine de Blé T55", "category": "Nourriture", "quantity": "12 kg", "status": "Bon état", "location": "Étagère Stock Sec", "comments": "Seuil d'alerte : 3 kg", "expiration_date": date.today() + timedelta(days=180)},
+    {"name": "Sucre Blanc en Poudre", "category": "Nourriture", "quantity": "8 kg", "status": "Bon état", "location": "Étagère Stock Sec", "comments": "Seuil d'alerte : 2 kg", "expiration_date": date.today() + timedelta(days=365)},
+    {"name": "Sucre Glace", "category": "Nourriture", "quantity": "3.5 kg", "status": "Bon état", "location": "Étagère Stock Sec", "comments": "Pour glaçages et pâtisseries", "expiration_date": date.today() + timedelta(days=300)},
+    {"name": "Huile de Tournesol", "category": "Nourriture", "quantity": "6 L", "status": "Bon état", "location": "Placard Condiments", "comments": "Pour crêpes et fritures", "expiration_date": date.today() + timedelta(days=240)},
+    {"name": "Huile d'Olive Vierge Extra", "category": "Nourriture", "quantity": "4 L", "status": "Bon état", "location": "Placard Condiments", "comments": "Bouteilles 1L verre", "expiration_date": date.today() + timedelta(days=200)},
+    {"name": "Levure Chimique (Alsa)", "category": "Nourriture", "quantity": "35 sachets", "status": "Bon état", "location": "Boîte Pâtisserie", "comments": "Packs de 10 sachets", "expiration_date": date.today() + timedelta(days=365)},
+    {"name": "Sucre Vanillé", "category": "Nourriture", "quantity": "40 sachets", "status": "Bon état", "location": "Boîte Pâtisserie", "comments": "Pour ateliers crêpes / gaufres", "expiration_date": date.today() + timedelta(days=365)},
+    {"name": "Pépites de Chocolat Noir 50%", "category": "Nourriture", "quantity": "2.5 kg", "status": "Bon état", "location": "Boîte Pâtisserie", "comments": "Pour cookies et muffins", "expiration_date": date.today() + timedelta(days=150)},
+    {"name": "Rouleaux de Papier Cuisson", "category": "Consommables", "quantity": "8 rouleaux", "status": "Neuf", "location": "Tiroir Fournitures", "comments": "Rouleaux 20m", "expiration_date": None},
+    {"name": "Rouleaux d'Aluminium Alimentaire", "category": "Consommables", "quantity": "6 rouleaux", "status": "Neuf", "location": "Tiroir Fournitures", "comments": "Rouleaux 30m", "expiration_date": None},
+    {"name": "Film Étirable Alimentaire 300m", "category": "Consommables", "quantity": "4 rouleaux", "status": "Neuf", "location": "Tiroir Fournitures", "comments": "Boîte distributrice avec curseur", "expiration_date": None},
+    {"name": "Liquide Vaisselle Écologique", "category": "Entretien", "quantity": "5 L", "status": "Neuf", "location": "Sous-évier Local", "comments": "Bidon de recharge 5L", "expiration_date": None},
+    {"name": "Éponges double face avec grattoir", "category": "Entretien", "quantity": "16 unités", "status": "Neuf", "location": "Sous-évier Local", "comments": "Lots de 4 éponges", "expiration_date": None},
+    {"name": "Sacs Poubelle 50L renforcés", "category": "Entretien", "quantity": "45 unités", "status": "Neuf", "location": "Local Cook'It", "comments": "Rouleaux de 15 sacs", "expiration_date": None},
 ]
 
 
@@ -399,9 +399,10 @@ async def seed_demo_data() -> None:
                     name=stock_data["name"],
                     category=stock_data["category"],
                     quantity=stock_data["quantity"],
-                    unit=stock_data["unit"],
-                    min_threshold=stock_data["min_threshold"],
-                    location=stock_data["location"],
+                    status=stock_data.get("status", "Bon état"),
+                    location=stock_data.get("location"),
+                    comments=stock_data.get("comments"),
+                    expiration_date=stock_data.get("expiration_date"),
                 )
                 session.add(item)
                 stock_created += 1
