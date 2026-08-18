@@ -129,28 +129,28 @@ function ListEditor({
   };
 
   return (
-    <div className="stack" style={{ gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {values.length === 0 ? (
         <p className="field__hint">{t("settings.list_empty")}</p>
       ) : (
         <div className="chips">
           {values.map((value, idx) => (
-            <span key={value} className="chip chip--neutral">
+            <span key={value} className="chip">
               <span>{value}</span>
               <button
                 type="button"
-                className="chip__remove"
+                style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", marginLeft: 4 }}
                 onClick={() => remove(idx)}
                 aria-label={t("settings.list_remove", { value })}
               >
-                <X size={12} />
+                <X size={13} />
               </button>
             </span>
           ))}
         </div>
       )}
 
-      <div className="inline" style={{ gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <input
           type="text"
           className="input"
@@ -167,7 +167,7 @@ function ListEditor({
         />
         <button
           type="button"
-          className="btn btn--outline btn--sm"
+          className="btn btn--ghost btn--sm"
           onClick={add}
           disabled={!draft.trim() || values.includes(draft.trim())}
           aria-label={t("settings.list_add")}
@@ -312,46 +312,50 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <main className="container page-pad">
-        <div className="card card--pad placeholder-box">
-          <p className="muted">{t("app.loading")}</p>
+      <main className="content">
+        <div className="card card--pad">
+          <p className="field__hint">{t("app.loading")}</p>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="container page-pad stack stack--lg">
+    <main className="content">
+      {/* En-tête de page */}
       <div className="page-head">
-        <div>
+        <div className="page-head__text">
           <h1>{t("settings.title")}</h1>
           <p className="page-head__sub">{t("settings.subtitle")}</p>
         </div>
         {savedSuccess && (
-          <div className="chip chip--success" style={{ animation: "fadeIn 0.25s ease" }}>
-            <CheckCircle2 size={16} />
+          <span className="badge badge--approved">
+            <CheckCircle2 size={14} />
             <span>{t("settings.saved")}</span>
-          </div>
+          </span>
         )}
       </div>
 
-      {/* Navigation par onglets */}
-      <div className="segmented-nav">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              className={`segmented-nav__btn ${isActive ? "segmented-nav__btn--active" : ""}`}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              <Icon size={16} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* Barre d'onglets au design Cook'It */}
+      <div className="filters">
+        <div className="chips">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className="chip"
+                aria-pressed={isActive}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <Icon size={16} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <form
@@ -365,10 +369,10 @@ export default function SettingsPage() {
             ONGLET 1 : RÈGLES & RÉSERVATIONS
             =================================================================== */}
         {activeTab === "rules" && (
-          <div className="stack stack--lg">
-            <section className="card card--pad stack">
-              <h2>{t("settings.group_rules")}</h2>
-              <div className="grid grid--2" style={{ gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <section className="card card--pad">
+              <h2 style={{ marginBottom: 16 }}>{t("settings.group_rules")}</h2>
+              <div className="form-grid form-grid--2">
                 {NUMBER_KEYS.filter((k) => k.startsWith("max_")).map((key) => (
                   <label key={key} className="field">
                     <span className="field__label">{t(`settings.${key}`)}</span>
@@ -384,16 +388,19 @@ export default function SettingsPage() {
                 ))}
               </div>
 
-              <div className="stack" style={{ gap: 12, marginTop: 8 }}>
-                <label className="checkbox-row">
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line-soft)" }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
                     checked={values.auto_approve_reservations === "true"}
                     onChange={(event) => setBool("auto_approve_reservations", event.target.checked)}
                   />
-                  <div className="stack" style={{ gap: 2 }}>
-                    <span className="strong">{t("settings.auto_approve_reservations")}</span>
-                    <p className="field__hint" style={{ margin: 0 }}>
+                  <div>
+                    <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: 14.5 }}>
+                      {t("settings.auto_approve_reservations")}
+                    </strong>
+                    <p className="field__hint" style={{ margin: "3px 0 0 0" }}>
                       {t("settings.auto_approve_reservations_hint")}
                     </p>
                   </div>
@@ -401,36 +408,38 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <section className="card card--pad stack">
+            <section className="card card--pad">
               <h2>{t("settings.group_form")}</h2>
-              <p className="field__hint">{t("settings.group_form_hint")}</p>
+              <p className="field__hint" style={{ marginBottom: 16 }}>{t("settings.group_form_hint")}</p>
 
-              <div className="stack" style={{ gap: 16 }}>
-                <label className="checkbox-row">
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
                     checked={values.require_phone === "true"}
                     onChange={(event) => setBool("require_phone", event.target.checked)}
                   />
-                  <div className="stack" style={{ gap: 2 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <Phone size={16} className="text-muted" />
-                      <span className="strong">{t("settings.require_phone")}</span>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <Phone size={15} color="var(--primary)" />
+                      <strong style={{ color: "var(--ink-strong)", fontSize: 14.5 }}>{t("settings.require_phone")}</strong>
                     </div>
                     <span className="field__hint">{t("settings.require_phone_hint")}</span>
                   </div>
                 </label>
 
-                <label className="checkbox-row">
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
                     checked={values.require_comments === "true"}
                     onChange={(event) => setBool("require_comments", event.target.checked)}
                   />
-                  <div className="stack" style={{ gap: 2 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <MessageSquare size={16} className="text-muted" />
-                      <span className="strong">{t("settings.require_comments")}</span>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <MessageSquare size={15} color="var(--primary)" />
+                      <strong style={{ color: "var(--ink-strong)", fontSize: 14.5 }}>{t("settings.require_comments")}</strong>
                     </div>
                     <span className="field__hint">{t("settings.require_comments_hint")}</span>
                   </div>
@@ -444,11 +453,11 @@ export default function SettingsPage() {
             ONGLET 2 : MATÉRIEL & CAUTION
             =================================================================== */}
         {activeTab === "equipment" && (
-          <div className="stack stack--lg">
-            <section className="card card--pad stack">
-              <h2>{t("settings.deposit_types")}</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <section className="card card--pad">
+              <h2 style={{ marginBottom: 12 }}>{t("settings.deposit_types")}</h2>
               <div className="field">
-                <span className="field__hint">{t("settings.deposit_types_hint")}</span>
+                <span className="field__hint" style={{ marginBottom: 8 }}>{t("settings.deposit_types_hint")}</span>
                 <ListEditor
                   values={lists.deposit_types}
                   label={t("settings.deposit_types")}
@@ -457,10 +466,10 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            <section className="card card--pad stack">
-              <h2>{t("settings.equipment_statuses")}</h2>
+            <section className="card card--pad">
+              <h2 style={{ marginBottom: 12 }}>{t("settings.equipment_statuses")}</h2>
               <div className="field">
-                <span className="field__hint">{t("settings.equipment_statuses_hint")}</span>
+                <span className="field__hint" style={{ marginBottom: 8 }}>{t("settings.equipment_statuses_hint")}</span>
                 <ListEditor
                   values={lists.equipment_statuses}
                   label={t("settings.equipment_statuses")}
@@ -468,12 +477,12 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="stack" style={{ gap: 8, marginTop: 12 }}>
-                <div className="inline" style={{ gap: 6 }}>
-                  <ShieldAlert size={16} className="text-accent" />
-                  <span className="strong">{t("settings.group_blocking")}</span>
+              <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--line-soft)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <ShieldAlert size={16} color="var(--accent-deep)" />
+                  <strong style={{ color: "var(--ink-strong)" }}>{t("settings.group_blocking")}</strong>
                 </div>
-                <p className="field__hint">{t("settings.group_blocking_hint")}</p>
+                <p className="field__hint" style={{ marginBottom: 12 }}>{t("settings.group_blocking_hint")}</p>
                 <div className="chips">
                   {lists.equipment_statuses.map((status) => {
                     const isBlocking = lists.blocking_equipment_statuses.includes(status);
@@ -481,7 +490,8 @@ export default function SettingsPage() {
                       <button
                         key={status}
                         type="button"
-                        className={`chip ${isBlocking ? "chip--danger" : "chip--neutral"}`}
+                        className={`chip ${isBlocking ? "is-active" : ""}`}
+                        style={isBlocking ? { background: "var(--danger)", borderColor: "var(--danger)", color: "#fff" } : {}}
                         onClick={() => {
                           const next = isBlocking
                             ? lists.blocking_equipment_statuses.filter((s) => s !== status)
@@ -489,7 +499,7 @@ export default function SettingsPage() {
                           setList("blocking_equipment_statuses", next);
                         }}
                       >
-                        {isBlocking && <Ban size={12} />}
+                        {isBlocking && <Ban size={13} />}
                         <span>{status}</span>
                       </button>
                     );
@@ -504,11 +514,11 @@ export default function SettingsPage() {
             ONGLET 3 : ACCÈS & INSCRIPTION
             =================================================================== */}
         {activeTab === "access" && (
-          <div className="stack stack--lg">
-            <section className="card card--pad stack">
-              <h2>{t("settings.allowed_domains")}</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <section className="card card--pad">
+              <h2 style={{ marginBottom: 12 }}>{t("settings.allowed_domains")}</h2>
               <div className="field">
-                <span className="field__hint">{t("settings.allowed_domains_hint")}</span>
+                <span className="field__hint" style={{ marginBottom: 8 }}>{t("settings.allowed_domains_hint")}</span>
                 <ListEditor
                   values={lists.allowed_domains}
                   label={t("settings.allowed_domains")}
@@ -523,27 +533,27 @@ export default function SettingsPage() {
             ONGLET 4 : EMAILS & NOTIFICATIONS (DASHBOARD COMPLET)
             =================================================================== */}
         {activeTab === "notifications" && (
-          <div className="stack stack--lg">
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Statut du Serveur SMTP */}
-            <section className="card card--pad stack">
-              <div className="inline" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <div className="inline" style={{ gap: 10 }}>
-                  <Mail size={20} className="text-accent" />
+            <section className="card card--pad">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <Mail size={22} color="var(--primary)" />
                   <h2 style={{ margin: 0 }}>{t("settings.group_email_server")}</h2>
                 </div>
                 <button
                   type="button"
-                  className="btn btn--outline btn--sm"
+                  className="btn btn--accent btn--sm"
                   disabled={testEmailLoading || !smtpStatus?.configured}
                   onClick={handleSendTestEmail}
                 >
-                  <Send size={15} className={testEmailLoading ? "spin" : ""} />
+                  <Send size={15} />
                   <span>{testEmailLoading ? t("settings.smtp_testing") : t("settings.smtp_test_btn")}</span>
                 </button>
               </div>
 
               {testEmailFeedback && (
-                <p className={`alert alert--${testEmailFeedback.type}`}>
+                <p className={`alert ${testEmailFeedback.type === "success" ? "alert--ok" : "alert--error"}`} style={{ marginBottom: 14 }}>
                   {testEmailFeedback.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
                   <span>{testEmailFeedback.message}</span>
                 </p>
@@ -551,46 +561,50 @@ export default function SettingsPage() {
 
               <div
                 style={{
-                  background: smtpStatus?.configured ? "rgba(13, 148, 136, 0.08)" : "rgba(239, 68, 68, 0.08)",
-                  border: `1px solid ${smtpStatus?.configured ? "rgba(13, 148, 136, 0.25)" : "rgba(239, 68, 68, 0.25)"}`,
-                  borderRadius: 10,
-                  padding: "14px 18px",
+                  background: smtpStatus?.configured ? "rgba(72, 188, 188, 0.12)" : "rgba(210, 60, 60, 0.12)",
+                  border: `1px solid ${smtpStatus?.configured ? "rgba(72, 188, 188, 0.35)" : "rgba(210, 60, 60, 0.3)"}`,
+                  borderRadius: "var(--radius-md)",
+                  padding: "16px 20px",
+                  marginBottom: 16,
                 }}
               >
-                <div className="inline" style={{ gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   {smtpStatus?.configured ? (
-                    <CheckCircle2 size={18} style={{ color: "#0d9488" }} />
+                    <CheckCircle2 size={18} color="var(--accent-deep)" />
                   ) : (
-                    <AlertCircle size={18} style={{ color: "#ef4444" }} />
+                    <AlertCircle size={18} color="var(--danger)" />
                   )}
-                  <strong style={{ color: smtpStatus?.configured ? "#0f766e" : "#b91c1c" }}>
+                  <strong style={{ color: smtpStatus?.configured ? "var(--primary-deep)" : "var(--danger)", fontSize: 14.5 }}>
                     {smtpStatus?.configured
                       ? t("settings.smtp_status_connected")
                       : t("settings.smtp_status_unconfigured")}
                   </strong>
                 </div>
-                <div className="grid grid--2" style={{ gap: 8, fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, fontSize: 13, color: "var(--ink-soft)" }}>
                   <div>
                     <span>{t("settings.smtp_host_label")} : </span>
-                    <strong style={{ color: "var(--text-strong)" }}>{smtpStatus?.smtp_host || "—"}</strong>
+                    <strong style={{ color: "var(--ink-strong)" }}>{smtpStatus?.smtp_host || "—"}</strong>
                     {smtpStatus?.smtp_port && ` (port ${smtpStatus.smtp_port})`}
                   </div>
                   <div>
                     <span>{t("settings.smtp_sender_label")} : </span>
-                    <strong style={{ color: "var(--text-strong)" }}>{smtpStatus?.smtp_from || "—"}</strong>
+                    <strong style={{ color: "var(--ink-strong)" }}>{smtpStatus?.smtp_from || "—"}</strong>
                   </div>
                 </div>
               </div>
 
-              <div style={{ marginTop: 8 }}>
-                <label className="checkbox-row">
+              <div style={{ paddingTop: 8 }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
                   <input
                     type="checkbox"
+                    style={{ width: 18, height: 18, marginTop: 2, accentColor: "var(--accent)" }}
                     checked={values.email_notifications_enabled === "true"}
                     onChange={(event) => setBool("email_notifications_enabled", event.target.checked)}
                   />
-                  <div className="stack" style={{ gap: 2 }}>
-                    <span className="strong">{t("settings.email_notifications_enabled")}</span>
+                  <div>
+                    <strong style={{ display: "block", color: "var(--ink-strong)", fontSize: 14.5 }}>
+                      {t("settings.email_notifications_enabled")}
+                    </strong>
                     <span className="field__hint">{t("settings.email_notifications_enabled_hint")}</span>
                   </div>
                 </label>
@@ -598,123 +612,118 @@ export default function SettingsPage() {
             </section>
 
             {/* Déclencheurs et Règles d'Envoi (Quand, Pourquoi, Comment) */}
-            <section className="card card--pad stack">
-              <div>
-                <h2>{t("settings.group_email_triggers")}</h2>
-                <p className="field__hint">{t("settings.group_email_triggers_hint")}</p>
-              </div>
+            <section className="card card--pad">
+              <h2 style={{ marginBottom: 4 }}>{t("settings.group_email_triggers")}</h2>
+              <p className="field__hint" style={{ marginBottom: 18 }}>{t("settings.group_email_triggers_hint")}</p>
 
-              <div className="stack" style={{ gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {/* 1. Code OTP */}
                 <div
-                  className="card"
                   style={{
-                    padding: "14px 18px",
-                    background: "var(--surface-sunken)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: 10,
+                    padding: "16px 18px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line-soft)",
+                    borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <KeyRound size={17} style={{ color: "var(--accent)" }} />
-                      <strong style={{ fontSize: 15 }}>{t("settings.email_otp_title")}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <KeyRound size={17} color="var(--primary)" />
+                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_otp_title")}</strong>
                     </div>
-                    <span className="chip chip--neutral" style={{ fontSize: 12 }}>
-                      Système (Toujours actif)
-                    </span>
+                    <span className="badge badge--muted">Système (Toujours actif)</span>
                   </div>
-                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_otp_when")}</div>
                     <div>{t("settings.email_otp_why")}</div>
-                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_otp_to")}</div>
+                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_otp_to")}</div>
                   </div>
                 </div>
 
                 {/* 2. Nouvelle Réservation */}
                 <div
-                  className="card"
                   style={{
-                    padding: "14px 18px",
-                    background: "var(--surface-sunken)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: 10,
+                    padding: "16px 18px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line-soft)",
+                    borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <MailCheck size={17} className="text-accent" />
-                      <strong style={{ fontSize: 15 }}>{t("settings.email_new_res_title")}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <MailCheck size={17} color="var(--primary)" />
+                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_new_res_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
                       checked={values.email_notify_new_reservation === "true"}
                       onChange={(event) => setBool("email_notify_new_reservation", event.target.checked)}
                     />
                   </div>
-                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_new_res_when")}</div>
                     <div>{t("settings.email_new_res_why")}</div>
-                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_new_res_to")}</div>
+                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_new_res_to")}</div>
                   </div>
                 </div>
 
                 {/* 3. Validation / Refus */}
                 <div
-                  className="card"
                   style={{
-                    padding: "14px 18px",
-                    background: "var(--surface-sunken)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: 10,
+                    padding: "16px 18px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line-soft)",
+                    borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <CheckCircle2 size={17} style={{ color: "#10b981" }} />
-                      <strong style={{ fontSize: 15 }}>{t("settings.email_approval_title")}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <CheckCircle2 size={17} color="var(--accent-deep)" />
+                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_approval_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
                       checked={values.email_notify_approval === "true"}
                       onChange={(event) => setBool("email_notify_approval", event.target.checked)}
                     />
                   </div>
-                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_approval_when")}</div>
                     <div>{t("settings.email_approval_why")}</div>
-                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_approval_to")}</div>
+                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_approval_to")}</div>
                   </div>
                 </div>
 
                 {/* 4. Rappel avant restitution */}
                 <div
-                  className="card"
                   style={{
-                    padding: "14px 18px",
-                    background: "var(--surface-sunken)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: 10,
+                    padding: "16px 18px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line-soft)",
+                    borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <Clock size={17} style={{ color: "#f59e0b" }} />
-                      <strong style={{ fontSize: 15 }}>{t("settings.email_reminder_title")}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Clock size={17} color="#d97706" />
+                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_reminder_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
                       checked={values.email_notify_reminder === "true"}
                       onChange={(event) => setBool("email_notify_reminder", event.target.checked)}
                     />
                   </div>
-                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_reminder_when")}</div>
                     <div>{t("settings.email_reminder_why")}</div>
-                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_reminder_to")}</div>
+                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_reminder_to")}</div>
                   </div>
                   {values.email_notify_reminder === "true" && (
-                    <div style={{ marginTop: 12, maxWidth: 300 }}>
+                    <div style={{ marginTop: 12, maxWidth: 280 }}>
                       <label className="field">
                         <span className="field__label" style={{ fontSize: 12.5 }}>
                           {t("settings.email_reminder_hours_before")}
@@ -735,62 +744,62 @@ export default function SettingsPage() {
 
                 {/* 5. Alerte Retard */}
                 <div
-                  className="card"
                   style={{
-                    padding: "14px 18px",
-                    background: "var(--surface-sunken)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: 10,
+                    padding: "16px 18px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line-soft)",
+                    borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <AlertCircle size={17} style={{ color: "#ef4444" }} />
-                      <strong style={{ fontSize: 15 }}>{t("settings.email_overdue_title")}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <AlertCircle size={17} color="var(--danger)" />
+                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_overdue_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
                       checked={values.email_notify_overdue === "true"}
                       onChange={(event) => setBool("email_notify_overdue", event.target.checked)}
                     />
                   </div>
-                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_overdue_when")}</div>
                     <div>{t("settings.email_overdue_why")}</div>
-                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_overdue_to")}</div>
+                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_overdue_to")}</div>
                   </div>
                 </div>
 
                 {/* 6. Alerte Stock Critique */}
                 <div
-                  className="card"
                   style={{
-                    padding: "14px 18px",
-                    background: "var(--surface-sunken)",
-                    border: "1px solid var(--border-soft)",
-                    borderRadius: 10,
+                    padding: "16px 18px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line-soft)",
+                    borderRadius: "var(--radius-md)",
                   }}
                 >
-                  <div className="inline" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div className="inline" style={{ gap: 8 }}>
-                      <Package size={17} style={{ color: "#8b5cf6" }} />
-                      <strong style={{ fontSize: 15 }}>{t("settings.email_stock_alert_title")}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Package size={17} color="#7c3aed" />
+                      <strong style={{ fontSize: 15, color: "var(--ink-strong)" }}>{t("settings.email_stock_alert_title")}</strong>
                     </div>
                     <input
                       type="checkbox"
+                      style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
                       checked={values.email_notify_stock_alert === "true"}
                       onChange={(event) => setBool("email_notify_stock_alert", event.target.checked)}
                     />
                   </div>
-                  <div className="stack" style={{ gap: 4, fontSize: 13, color: "var(--text-muted)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 13, color: "var(--ink-soft)" }}>
                     <div>{t("settings.email_stock_alert_when")}</div>
                     <div>{t("settings.email_stock_alert_why")}</div>
-                    <div style={{ color: "var(--text-strong)", fontWeight: 500 }}>{t("settings.email_stock_alert_to")}</div>
+                    <div style={{ color: "var(--ink-strong)", fontWeight: 500 }}>{t("settings.email_stock_alert_to")}</div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--line-soft)" }}>
                 <label className="field">
                   <span className="field__label">{t("settings.email_staff_notification_address")}</span>
                   <input
@@ -806,10 +815,10 @@ export default function SettingsPage() {
             </section>
 
             {/* Webhook Discord */}
-            <section className="card card--pad stack">
-              <h2>{t("settings.discord_webhook_url")}</h2>
+            <section className="card card--pad">
+              <h2 style={{ marginBottom: 8 }}>{t("settings.discord_webhook_url")}</h2>
               <label className="field">
-                <span className="field__hint">{t("settings.discord_webhook_url_hint")}</span>
+                <span className="field__hint" style={{ marginBottom: 6 }}>{t("settings.discord_webhook_url_hint")}</span>
                 <input
                   type="url"
                   className="input"
@@ -830,33 +839,33 @@ export default function SettingsPage() {
         )}
       </form>
 
-      {/* Barre d'enregistrement collante / flottante */}
+      {/* Barre d'enregistrement flottante */}
       {dirty.length > 0 && (
-        <div className="save-bar">
-          <div className="save-bar__text">
-            <strong>{t("settings.unsaved_changes")}</strong>
-            <span className="muted" style={{ display: "block", fontSize: 13, color: "rgba(255,255,255,0.75)" }}>
+        <div className="cart-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 40 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <strong style={{ display: "block", fontSize: 14, color: "var(--ink-strong)" }}>{t("settings.unsaved_changes")}</strong>
+            <span style={{ fontSize: 12, color: "var(--ink-soft)" }}>
               {dirty.length} paramètre(s) modifié(s)
             </span>
           </div>
-          <div className="inline" style={{ gap: 8 }}>
+          <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               className="btn btn--ghost btn--sm"
               disabled={saving}
               onClick={resetChanges}
             >
-              <RotateCcw size={16} />
-              {t("app.cancel")}
+              <RotateCcw size={15} />
+              <span>{t("app.cancel")}</span>
             </button>
             <button
               type="button"
-              className="btn btn--accent btn--sm"
+              className="btn btn--primary btn--sm"
               disabled={saving}
               onClick={() => save()}
             >
-              <Save size={16} />
-              {saving ? t("app.saving") : t("app.save")}
+              <Save size={15} />
+              <span>{saving ? t("app.saving") : t("app.save")}</span>
             </button>
           </div>
         </div>
