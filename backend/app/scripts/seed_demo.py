@@ -448,7 +448,7 @@ async def seed_demo_data() -> None:
             )
             session.add(r1)
             await session.flush()
-            session.add(ReservationItem(reservation_id=r1.id, equipment_id=all_eq[0].id, deposit_amount=all_eq[0].deposit_amount))
+            session.add(ReservationItem(reservation_id=r1.id, equipment_id=all_eq[0].id))
 
             # Réservation 2 : En attente de validation (Active)
             r2 = Reservation(
@@ -462,7 +462,7 @@ async def seed_demo_data() -> None:
             )
             session.add(r2)
             await session.flush()
-            session.add(ReservationItem(reservation_id=r2.id, equipment_id=all_eq[1].id, deposit_amount=all_eq[1].deposit_amount))
+            session.add(ReservationItem(reservation_id=r2.id, equipment_id=all_eq[1].id))
 
             await session.commit()
             print("✅ Réservations de démonstration générées (en cours & en attente).")
